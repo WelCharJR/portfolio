@@ -1,6 +1,35 @@
-# Portfólio
+# Wel — Portfólio de Projetos
 
-Site que embute os projetos como demos ao vivo, não como screenshots.
+Portfólio pessoal onde cada projeto roda **ao vivo dentro do site** — nada de
+screenshot ou GIF gravado. Você clica no card e mexe na aplicação de verdade.
+
+🔗 [ver o site no ar](#) · feito por **Wel**, montador de sistemas aeronáuticos
+na Embraer e estudante de Análise e Desenvolvimento de Sistemas.
+
+---
+
+## Sobre
+
+Esse portfólio nasceu de uma ideia simples: em vez de espalhar protótipos em
+repositórios soltos, juntar tudo num único lugar onde cada projeto continua
+independente — com seu próprio visual, sua própria lógica — mas é apresentado
+de forma consistente, com contexto do problema que ele resolve e das decisões
+técnicas por trás.
+
+Os projetos partem, em boa parte, da minha vivência na linha de montagem
+estrutural e final da Embraer — interpretação de desenho técnico, torqueamento,
+inspeção visual, rastreabilidade — misturada com o que venho estudando em
+desenvolvimento de sistemas.
+
+## Projetos
+
+| Projeto | Descrição | Stack |
+|---|---|---|
+| **[RASTRO](src/projects/rastro)** | Painel de controle de qualidade e rastreabilidade de torque numa linha de montagem aeronáutica, com verificação automática de conformidade | React |
+| **[Glass Cockpit](src/projects/glass-cockpit)** | Primary Flight Display simulado — horizonte artificial, piloto automático com física de inércia, avisos de envelope de voo | React + SVG |
+
+Cada projeto tem seu próprio README dentro da pasta, com mais detalhes de
+arquitetura e das decisões de design.
 
 ## Rodando localmente
 
@@ -9,34 +38,47 @@ npm install
 npm run dev
 ```
 
-## Estrutura
+Abre em `http://localhost:5173`.
+
+## Como o site é montado
+
+O "casco" (home, navegação, moldura ao redor da demo) usa um visual neutro —
+papel claro, grade fina de desenho técnico, azul como único acento — de
+propósito, pra não competir com a identidade visual de cada projeto embutido.
+Cada projeto mantém seu próprio tema e paleta.
 
 ```
 src/
-  theme.css              tokens visuais do "casco" do site — deliberadamente neutros,
-                          pra não competir com o tema de cada projeto embutido
-  data/projects.js         metadados de cada projeto (título, resumo, stack, destaques)
+  theme.css              tema do casco do site (neutro, tipo prancheta técnica)
+  data/projects.js         metadados dos projetos — título, resumo, stack, destaques
   components/
     Nav.jsx, Footer.jsx, ProjectCard.jsx
   pages/
     Home.jsx                grid de projetos
-    ProjectPage.jsx          case study + demo ao vivo embutida via React.lazy
+    ProjectPage.jsx          case study + demo ao vivo, carregada sob demanda
   projects/
-    rastro/                  projeto RASTRO completo (seu próprio theme.css, componentes, etc.)
-    glass-cockpit/            projeto Glass Cockpit completo
-  App.jsx                    React Router: "/" e "/projetos/:slug"
+    rastro/                   projeto completo, isolado, com seu próprio tema
+    glass-cockpit/             idem
 ```
 
-## Como adicionar um projeto novo
+Cada demo é carregada com `React.lazy`, então a home fica leve e o código de
+um projeto só baixa quando alguém realmente abre a página dele.
+
+## Adicionando um novo projeto
 
 1. Copie a pasta `src/` do projeto pra dentro de `src/projects/<slug>/`
-2. Apague o `main.jsx` e `index.html` da cópia (não são usados aqui — o projeto
-   passa a rodar dentro do `<Demo />` da página, não sozinho)
+2. Apague `main.jsx` e `index.html` da cópia — aqui ele roda embutido, não sozinho
 3. Adicione uma entrada em `src/data/projects.js`
 4. Registre o import preguiçoso em `src/pages/ProjectPage.jsx`:
    ```js
    "novo-slug": lazy(() => import("../projects/novo-slug/App.jsx")),
    ```
 
-Cada projeto mantém seu próprio `theme.css` e paleta — o site não impõe nenhum
-estilo por cima da demo, só a molduras neutra ao redor dela.
+## Próximos projetos
+
+- Sistema de peso e balanceamento (weight & balance) com validação de envelope
+- MFD de navegação pra acompanhar o Glass Cockpit
+
+## Contato
+
+Fico no LinkedIn e no GitHub — links na home do site.

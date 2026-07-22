@@ -74,6 +74,26 @@ um projeto só baixa quando alguém realmente abre a página dele.
    "novo-slug": lazy(() => import("../projects/novo-slug/App.jsx")),
    ```
 
+## Publicando no GitHub Pages
+
+O GitHub Pages só serve arquivos estáticos — ele não builda o projeto sozinho.
+Esse repositório já vem com um workflow (`.github/workflows/deploy.yml`) que
+builda e publica automaticamente a cada push na `main`. Pra ativar:
+
+1. No repositório do GitHub, vá em **Settings → Pages**
+2. Em **Source**, selecione **GitHub Actions** (não "Deploy from a branch")
+3. Faça um push na `main` — o workflow builda o projeto e publica sozinho
+4. O link fica em **Settings → Pages**, algo como `https://<usuário>.github.io/<repositório>/`
+
+Se preferir publicar manualmente sem o workflow:
+
+```bash
+npm run build
+```
+
+Isso gera a pasta `dist/` — é o conteúdo dela (não a `src/`) que precisa ir
+pro branch/pasta que o Pages está servindo.
+
 ## Próximos projetos
 
 - Sistema de peso e balanceamento (weight & balance) com validação de envelope

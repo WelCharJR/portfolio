@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import "./theme.css";
 import Nav from "./components/Nav.jsx";
 import Footer from "./components/Footer.jsx";
@@ -7,7 +7,7 @@ import ProjectPage from "./pages/ProjectPage.jsx";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="site-root">
         <Nav />
         <Routes>
@@ -16,6 +16,6 @@ export default function App() {
         </Routes>
         <Footer />
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

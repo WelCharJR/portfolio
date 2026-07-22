@@ -1,0 +1,117 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+.pfd-root {
+  --panel-bg: #0b0d0e;
+  --bezel: #16181a;
+  --tape-bg: #050607;
+  --sky: #1c5fae;
+  --ground: #6b4a2c;
+  --white: #f2f3f4;
+  --dim: #7d8489;
+  --cyan: #4fd6e0;
+  --green: #5fd97a;
+  --amber: #f2b400;
+  --red: #e6534a;
+
+  font-family: "IBM Plex Sans", sans-serif;
+  background: #101214;
+  color: var(--white);
+}
+
+.pfd-root .display {
+  font-family: "Space Grotesk", sans-serif;
+}
+.pfd-root .mono {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.ctrl-btn {
+  background: var(--bezel);
+  border: 1px solid #2a2d30;
+  color: var(--dim);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  font-size: 13px;
+}
+.ctrl-btn:hover:not(:disabled) {
+  border-color: #454a4f;
+  color: var(--white);
+}
+.ctrl-btn.active {
+  border-color: var(--green);
+  color: var(--green);
+}
+.ctrl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pfd-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: #2a2d30;
+  border-radius: 2px;
+  outline: none;
+}
+.pfd-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--cyan);
+  cursor: pointer;
+  border: 2px solid #0b0d0e;
+}
+.pfd-slider::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--cyan);
+  cursor: pointer;
+  border: 2px solid #0b0d0e;
+}
+.pfd-slider:disabled::-webkit-slider-thumb {
+  background: #4a4d50;
+}
+.pfd-slider:disabled {
+  opacity: 0.5;
+}
+
+.mcp-field input {
+  width: 100%;
+  background: var(--tape-bg);
+  border: 1px solid #2a2d30;
+  border-radius: 4px;
+  color: var(--green);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 10px;
+  text-align: center;
+  box-sizing: border-box;
+}
+.mcp-field input:focus {
+  outline: none;
+  border-color: var(--cyan);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+@keyframes pfd-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+.pfd-warning {
+  animation: pfd-blink 0.7s infinite;
+}

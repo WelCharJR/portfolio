@@ -1,0 +1,160 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+.rastro-root {
+  --bg: #191c1e;
+  --panel: #212528;
+  --panel-raised: #262b2e;
+  --line: #34393d;
+  --line-soft: #2a2f32;
+  --text: #e9ebec;
+  --text-dim: #9aa2a8;
+  --text-faint: #6b7378;
+  --amber: #f2a900;
+  --amber-dim: #6b4f0f;
+  --green: #5fae7c;
+  --green-dim: #21372a;
+  --red: #d4574a;
+  --red-dim: #3d2321;
+  --stripe: repeating-linear-gradient(135deg, var(--amber) 0px, var(--amber) 10px, #191c1e 10px, #191c1e 20px);
+
+  font-family: "IBM Plex Sans", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+}
+
+.rastro-root .display {
+  font-family: "Space Grotesk", sans-serif;
+}
+.rastro-root .mono {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+/* Serviceable-tag motif — used for aircraft cards, NC cards, confirmation summary */
+.tag {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.tag::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-faint);
+  background: var(--bg);
+}
+.tag-clip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  z-index: 1;
+}
+
+.card-hover {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.card-hover:hover {
+  border-color: #454b50;
+  transform: translateY(-1px);
+}
+
+.field-btn,
+.field-input {
+  width: 100%;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+.field-btn:hover,
+.field-input:focus {
+  border-color: #4a5155;
+}
+.field-input:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+.field-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+
+.primary-btn {
+  background: var(--amber);
+  color: #191c1e;
+  border: none;
+  border-radius: 5px;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 15px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.primary-btn:hover {
+  filter: brightness(1.08);
+}
+.primary-btn:active {
+  transform: scale(0.99);
+}
+.primary-btn:disabled {
+  background: var(--line);
+  color: var(--text-faint);
+  cursor: not-allowed;
+  filter: none;
+}
+
+.ghost-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 14px;
+  padding: 15px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.ghost-btn:hover {
+  border-color: #4a5155;
+  color: var(--text);
+}
+
+.option-row {
+  transition: background 0.12s ease;
+  cursor: pointer;
+}
+.option-row:hover {
+  background: var(--panel-raised);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-btn,
+  .ghost-btn,
+  .field-btn,
+  .option-row,
+  .card-hover {
+    transition: none;
+  }
+}

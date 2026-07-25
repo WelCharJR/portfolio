@@ -1,4 +1,5 @@
 import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { OPERACOES_GRID } from "./operacoesGrid.js";
 
 export default function OperacaoRow({ operacao }) {
   return (
@@ -6,8 +7,8 @@ export default function OperacaoRow({ operacao }) {
       className="mono"
       style={{
         display: "grid",
-        gridTemplateColumns: "1.6fr 1fr 0.8fr 0.9fr 1fr 0.7fr 0.6fr",
-        gap: 12,
+        gridTemplateColumns: OPERACOES_GRID,
+        gap: 10,
         padding: "10px 14px",
         fontSize: 12.5,
         borderBottom: "1px solid var(--line-soft)",
@@ -23,6 +24,8 @@ export default function OperacaoRow({ operacao }) {
       <span style={{ color: "var(--text-dim)", fontFamily: "'IBM Plex Sans', sans-serif" }}>
         {operacao.operador}
       </span>
+      <span style={{ color: "var(--text-dim)" }}>{operacao.op}</span>
+      <span style={{ color: "var(--text)" }}>{operacao.horas.toFixed(1)}h</span>
       <span style={{ color: "var(--text-faint)" }}>{operacao.hora}</span>
       <span style={{ display: "flex", justifyContent: "flex-end" }}>
         {operacao.ok ? (

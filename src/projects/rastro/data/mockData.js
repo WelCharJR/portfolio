@@ -13,10 +13,23 @@ export const pontos = [
 ];
 
 export const operacoes = [
-  { ponto: "Longarina EF — P.12A", spec: "25.0–30.0", aplicado: "27.4", ferramenta: "CD-0231", operador: "M. Andrade", hora: "14:02", ok: true },
-  { ponto: "Nervura 6 — P.03B", spec: "18.0–22.0", aplicado: "23.6", ferramenta: "CD-0114", operador: "R. Nolasco", hora: "13:47", ok: false },
-  { ponto: "Skin Panel — P.44", spec: "12.0–15.0", aplicado: "13.2", ferramenta: "CD-0231", operador: "M. Andrade", hora: "13:31", ok: true },
-  { ponto: "Trem de Pouso — P.02", spec: "80.0–95.0", aplicado: "88.0", ferramenta: "CD-0087", operador: "W. Camargo", hora: "13:15", ok: true },
+  { ponto: "Longarina EF — P.12A", spec: "25.0–30.0", aplicado: "27.4", ferramenta: "CD-0231", operador: "M. Andrade", hora: "14:02", horas: 1.5, op: "OP-4821", ok: true },
+  { ponto: "Nervura 6 — P.03B", spec: "18.0–22.0", aplicado: "23.6", ferramenta: "CD-0114", operador: "R. Nolasco", hora: "13:47", horas: 0.5, op: "OP-4821", ok: false },
+  { ponto: "Skin Panel — P.44", spec: "12.0–15.0", aplicado: "13.2", ferramenta: "CD-0231", operador: "M. Andrade", hora: "13:31", horas: 2.0, op: "OP-4790", ok: true },
+  { ponto: "Trem de Pouso — P.02", spec: "80.0–95.0", aplicado: "88.0", ferramenta: "CD-0087", operador: "W. Camargo", hora: "13:15", horas: 1.0, op: "OP-4790", ok: true },
+];
+
+export const operadores = [
+  { matricula: "MA-2291", nome: "M. Andrade", horasNoMes: 138, metaMensal: 176 },
+  { matricula: "RN-0847", nome: "R. Nolasco", horasNoMes: 121, metaMensal: 176 },
+  { matricula: "WC-1532", nome: "W. Camargo", horasNoMes: 160, metaMensal: 176 },
+];
+
+// Um processo agrupa várias operações sob uma mesma ordem de produção (OP) —
+// ex.: todas as operações necessárias pra fechar a produção completa de uma asa.
+export const processos = [
+  { id: "OP-4821", nome: "Produção completa da asa — MSN 7734", horasEstimadas: 480, horasRealizadas: 312 },
+  { id: "OP-4790", nome: "Fuselagem central — MSN 7735", horasEstimadas: 620, horasRealizadas: 190 },
 ];
 
 export const naoConformidades = [

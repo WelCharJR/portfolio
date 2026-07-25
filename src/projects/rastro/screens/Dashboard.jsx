@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus } from "lucide-react";
+import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users } from "lucide-react";
 import StatusPill from "../components/StatusPill.jsx";
 import AeronaveCard from "../components/AeronaveCard.jsx";
 import OperacaoRow from "../components/OperacaoRow.jsx";
 import OperacoesHeader from "../components/OperacoesHeader.jsx";
-import { aeronaves, operacoes, naoConformidades, ferramentas } from "../data/mockData.js";
+import OperadorCard from "../components/OperadorCard.jsx";
+import ProcessoCard from "../components/ProcessoCard.jsx";
+import { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos } from "../data/mockData.js";
 
 const TABS = [
   { id: "producao", label: "Produção" },
   { id: "operacoes", label: "Registro de operações" },
+  { id: "horas", label: "Horas" },
   { id: "nc", label: "Não conformidades" },
   { id: "ferramentas", label: "Ferramentas" },
 ];
@@ -132,6 +135,34 @@ export default function Dashboard({ onNovoRegistro }) {
             {operacoes.map((op) => (
               <OperacaoRow key={op.ponto + op.hora} operacao={op} />
             ))}
+          </div>
+        </div>
+      )}
+
+      {tab === "horas" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <Users size={15} color="var(--text-dim)" />
+              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por operador no mês</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+              {operadores.map((o) => (
+                <OperadorCard key={o.matricula} operador={o} />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <Gauge size={15} color="var(--text-dim)" />
+              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por processo (ordem de produção)</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+              {processos.map((p) => (
+                <ProcessoCard key={p.id} processo={p} />
+              ))}
+            </div>
           </div>
         </div>
       )}

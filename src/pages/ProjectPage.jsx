@@ -8,6 +8,9 @@ import { getProject } from "../data/projects.js";
 const registry = {
   rastro: lazy(() => import("../projects/rastro/App.jsx")),
   "glass-cockpit": lazy(() => import("../projects/glass-cockpit/App.jsx")),
+  dmaic: lazy(() => import("../projects/dmaic/App.jsx")),
+  "weapons-display": lazy(() => import("../projects/weapons-display/App.jsx")),
+  opt: lazy(() => import("../projects/opt/App.jsx")),
 };
 
 export default function ProjectPage() {

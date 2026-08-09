@@ -1,0 +1,101 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+.dmaic-root {
+  --paper: #fafaf7;
+  --panel: #ffffff;
+  --line: #dfe3de;
+  --ink: #1f2a24;
+  --ink-dim: #5c6b62;
+  --ink-faint: #8b978f;
+  --green: #1f7a4d;
+  --green-soft: #e4f3ea;
+  --red: #c0483d;
+  --red-soft: #f8e9e7;
+  --amber: #b8791b;
+  --amber-soft: #f6ecd9;
+  --blue: #3a6ea5;
+  --blue-soft: #e6eef6;
+
+  font-family: "IBM Plex Sans", sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.dmaic-root .display {
+  font-family: "Space Grotesk", sans-serif;
+}
+.dmaic-root .mono {
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.step-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.step-btn:hover {
+  border-color: var(--green);
+}
+.step-btn.active {
+  background: var(--green);
+  border-color: var(--green);
+}
+.step-btn.active .step-label,
+.step-btn.active .step-letter {
+  color: #fff;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+.pill {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 3px;
+  letter-spacing: 0.03em;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+table.dmaic-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+table.dmaic-table th {
+  text-align: left;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+table.dmaic-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #eef1ee;
+  vertical-align: top;
+}
+
+.ctq-box {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--paper);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.4;
+}

@@ -27,6 +27,9 @@ desenvolvimento de sistemas.
 |---|---|---|
 | **[RASTRO](src/projects/rastro)** | Painel de controle de qualidade e rastreabilidade de torque numa linha de montagem aeronáutica, com verificação automática de conformidade | React |
 | **[Glass Cockpit](src/projects/glass-cockpit)** | Primary Flight Display simulado — horizonte artificial, piloto automático com física de inércia, avisos de envelope de voo | React + SVG |
+| **[DMAIC — Green Belt](src/projects/dmaic)** | Case de melhoria contínua aplicando o ciclo DMAIC completo à redução de não conformidade de torque | React + SVG |
+| **[Weapons Display](src/projects/weapons-display)** | Radar tático com guiamento por navegação proporcional e um alvo controlado por IA que se defende sozinho | React + SVG |
+| **[OPT](src/projects/opt)** | CDU simulado calculando V-speeds, distância de decolagem e flap recomendado, pra 7 aeronaves reais | React |
 
 Cada projeto tem seu próprio README dentro da pasta, com mais detalhes de
 arquitetura e das decisões de design.

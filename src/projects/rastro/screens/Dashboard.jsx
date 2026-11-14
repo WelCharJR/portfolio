@@ -1,12 +1,13 @@
-import { useState } from "react";
-import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users, Search, CheckCircle2, RotateCcw } from "lucide-react";
 import StatusPill from "../components/StatusPill.jsx";
 import AeronaveCard from "../components/AeronaveCard.jsx";
 import OperacaoRow from "../components/OperacaoRow.jsx";
 import OperacoesHeader from "../components/OperacoesHeader.jsx";
 import OperadorCard from "../components/OperadorCard.jsx";
 import ProcessoCard from "../components/ProcessoCard.jsx";
-import { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos } from "../data/mockData.js";
+import { useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
 
 const TABS = [
   { id: "producao", label: "Produção" },
@@ -16,8 +17,62 @@ const TABS = [
   { id: "ferramentas", label: "Ferramentas" },
 ];
 
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.035 } },
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
+};
+
+function SearchInput({ value, onChange, placeholder }) {
+  return (
+    <div style={{ position: "relative", maxWidth: 320, marginBottom: 14 }}>
+      <Search size={14} color="var(--text-faint)" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+      <input
+        className="field-input focus-ring mono"
+        style={{ paddingLeft: 34, fontSize: 12.5, padding: "9px 12px 9px 34px" }}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 export default function Dashboard({ onNovoRegistro }) {
   const [tab, setTab] = useState("producao");
+  const [buscaOperacoes, setBuscaOperacoes] = useState("");
+  const [buscaNc, setBuscaNc] = useState("");
+  const [buscaFerramentas, setBuscaFerramentas] = useState("");
+  const [ncFiltro, setNcFiltro] = useState("aberta");
+
+  const { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos } = useRastroState();
+  const dispatch = useRastroDispatch();
+
+  const ncAbertas = useMemo(() => naoConformidades.filter((n) => n.status !== "resolvida"), [naoConformidades]);
+
+  const operacoesFiltradas = useMemo(() => {
+    const q = buscaOperacoes.trim().toLowerCase();
+    if (!q) return operacoes;
+    return operacoes.filter((op) =>
+      [op.ponto, op.ferramenta, op.operador, op.op].join(" ").toLowerCase().includes(q)
+    );
+  }, [operacoes, buscaOperacoes]);
+
+  const ncFiltradas = useMemo(() => {
+    const q = buscaNc.trim().toLowerCase();
+    return naoConformidades
+      .filter((nc) => (ncFiltro === "todas" ? true : (nc.status || "aberta") === ncFiltro))
+      .filter((nc) => !q || [nc.id, nc.desc, nc.os].join(" ").toLowerCase().includes(q));
+  }, [naoConformidades, buscaNc, ncFiltro]);
+
+  const ferramentasFiltradas = useMemo(() => {
+    const q = buscaFerramentas.trim().toLowerCase();
+    if (!q) return ferramentas;
+    return ferramentas.filter((f) => [f.id, f.tipo].join(" ").toLowerCase().includes(q));
+  }, [ferramentas, buscaFerramentas]);
 
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 24px 60px" }}>
@@ -38,17 +93,27 @@ export default function Dashboard({ onNovoRegistro }) {
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <StatusPill icon={Gauge} label="EM PRODUÇÃO" value={aeronaves.length} tone="neutral" />
-          <StatusPill icon={ShieldAlert} label="NC ABERTAS" value={naoConformidades.length} tone="red" />
+          <motion.div key={aeronaves.length} initial={{ scale: 1.15 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
+            <StatusPill icon={Gauge} label="EM PRODUÇÃO" value={aeronaves.length} tone="neutral" />
+          </motion.div>
+          <motion.div key={`nc-${ncAbertas.length}`} initial={{ scale: 1.15 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
+            <StatusPill icon={ShieldAlert} label="NC ABERTAS" value={ncAbertas.length} tone="red" />
+          </motion.div>
           <StatusPill icon={Clock} label="CALIBRAÇÃO VENCENDO" value={ferramentas.length} tone="amber" />
-          <button type="button" className="primary-btn focus-ring" onClick={onNovoRegistro} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px" }}>
+          <motion.button
+            type="button"
+            className="primary-btn focus-ring"
+            onClick={onNovoRegistro}
+            whileTap={{ scale: 0.97 }}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px" }}
+          >
             <ClipboardPlus size={15} /> Registrar operação
-          </button>
+          </motion.button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--line)" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--line)", position: "relative" }}>
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -62,153 +127,284 @@ export default function Dashboard({ onNovoRegistro }) {
               fontSize: 13.5,
               fontFamily: "'IBM Plex Sans', sans-serif",
               color: tab === t.id ? "var(--text)" : "var(--text-faint)",
-              borderBottom: tab === t.id ? "2px solid var(--amber)" : "2px solid transparent",
+              position: "relative",
               marginBottom: -1,
             }}
           >
             {t.label}
+            {tab === t.id && (
+              <motion.div
+                layoutId="tab-underline"
+                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2, background: "var(--amber)" }}
+              />
+            )}
           </button>
         ))}
       </div>
 
       {/* Aircraft grid — always visible as primary context */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12, marginBottom: 28 }}>
+      <motion.div
+        variants={listVariants}
+        initial="hidden"
+        animate="show"
+        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12, marginBottom: 28 }}
+      >
         {aeronaves.map((a) => (
-          <AeronaveCard key={a.serie} aeronave={a} />
+          <motion.div key={a.serie} variants={itemVariants} layout>
+            <AeronaveCard aeronave={a} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
-      {tab === "producao" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
-          <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Últimas operações registradas</span>
-              <button
-                className="focus-ring mono"
-                style={{ background: "none", border: "1px solid var(--line)", color: "var(--text-dim)", fontSize: 11.5, padding: "5px 10px", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-                onClick={() => setTab("operacoes")}
-              >
-                ver todas <ChevronRight size={12} />
-              </button>
-            </div>
-            <OperacoesHeader />
-            {operacoes.map((op) => (
-              <OperacaoRow key={op.ponto + op.hora} operacao={op} />
-            ))}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ background: "var(--red-dim)", border: "1px solid #5a2f2b", borderRadius: 5, padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <AlertTriangle size={15} color="var(--red)" />
-                <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Não conformidades recentes</span>
-              </div>
-              {naoConformidades.map((nc) => (
-                <div key={nc.id} style={{ padding: "8px 0", borderTop: "1px solid #4a2825" }}>
-                  <div className="mono" style={{ fontSize: 11, color: "var(--red)", marginBottom: 2 }}>{nc.id} · {nc.os}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--text)" }}>{nc.desc}</div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.16 }}
+        >
+          {tab === "producao" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
+              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Últimas operações registradas</span>
+                  <button
+                    className="focus-ring mono"
+                    style={{ background: "none", border: "1px solid var(--line)", color: "var(--text-dim)", fontSize: 11.5, padding: "5px 10px", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+                    onClick={() => setTab("operacoes")}
+                  >
+                    ver todas <ChevronRight size={12} />
+                  </button>
                 </div>
-              ))}
-            </div>
-
-            <div style={{ background: "var(--amber-dim)", border: "1px solid #7a5c14", borderRadius: 5, padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <Clock size={15} color="var(--amber)" />
-                <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Calibração vencendo</span>
+                <OperacoesHeader />
+                <motion.div variants={listVariants} initial="hidden" animate="show">
+                  <AnimatePresence initial={false}>
+                    {operacoes.slice(0, 6).map((op) => (
+                      <motion.div key={op.ponto + op.hora} variants={itemVariants} layout exit={{ opacity: 0 }}>
+                        <OperacaoRow operacao={op} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
               </div>
-              {ferramentas.map((f) => (
-                <div key={f.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid #5c4611" }}>
-                  <span className="mono" style={{ fontSize: 12, color: "var(--text)" }}>{f.id}</span>
-                  <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>{f.dias}d — {f.venc}</span>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: "var(--red-dim)", border: "1px solid #5a2f2b", borderRadius: 5, padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <AlertTriangle size={15} color="var(--red)" />
+                    <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Não conformidades recentes</span>
+                  </div>
+                  <AnimatePresence initial={false}>
+                    {ncAbertas.slice(0, 4).map((nc) => (
+                      <motion.div key={nc.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden" }}>
+                        <div style={{ padding: "8px 0", borderTop: "1px solid #4a2825" }}>
+                          <div className="mono" style={{ fontSize: 11, color: "var(--red)", marginBottom: 2 }}>{nc.id} · {nc.os}</div>
+                          <div style={{ fontSize: 12.5, color: "var(--text)" }}>{nc.desc}</div>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {ncAbertas.length === 0 && (
+                      <div style={{ padding: "8px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma NC aberta</div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {tab === "operacoes" && (
-        <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
-          <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Registro completo de operações</span>
-          <div style={{ marginTop: 10 }}>
-            <OperacoesHeader />
-            {operacoes.map((op) => (
-              <OperacaoRow key={op.ponto + op.hora} operacao={op} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tab === "horas" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <Users size={15} color="var(--text-dim)" />
-              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por operador no mês</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-              {operadores.map((o) => (
-                <OperadorCard key={o.matricula} operador={o} />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <Gauge size={15} color="var(--text-dim)" />
-              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por processo (ordem de produção)</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
-              {processos.map((p) => (
-                <ProcessoCard key={p.id} processo={p} />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "nc" && (
-        <div style={{ display: "grid", gap: 10 }}>
-          {naoConformidades.map((nc) => (
-            <div key={nc.id} className="tag card-hover" style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div className="tag-clip" />
-              <div>
-                <div className="mono" style={{ fontSize: 11, color: "var(--red)" }}>{nc.id} · {nc.os}</div>
-                <div style={{ fontSize: 13.5, marginTop: 3 }}>{nc.desc}</div>
+                <div style={{ background: "var(--amber-dim)", border: "1px solid #7a5c14", borderRadius: 5, padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <Clock size={15} color="var(--amber)" />
+                    <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Calibração vencendo</span>
+                  </div>
+                  {ferramentas.map((f) => (
+                    <div key={f.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid #5c4611" }}>
+                      <span className="mono" style={{ fontSize: 12, color: "var(--text)" }}>{f.id}</span>
+                      <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>{f.dias}d — {f.venc}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <span
-                className="mono"
-                style={{
-                  fontSize: 10.5,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                  padding: "4px 9px",
-                  borderRadius: 3,
-                  background: nc.sev === "alta" ? "var(--red-dim)" : "var(--amber-dim)",
-                  color: nc.sev === "alta" ? "var(--red)" : "var(--amber)",
-                }}
-              >
-                {nc.sev}
-              </span>
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {tab === "ferramentas" && (
-        <div style={{ display: "grid", gap: 10 }}>
-          {ferramentas.map((f) => (
-            <div key={f.id} className="tag card-hover" style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div className="tag-clip" />
-              <div>
-                <div className="mono" style={{ fontSize: 12.5 }}>{f.id}</div>
-                <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 2 }}>{f.tipo}</div>
+          {tab === "operacoes" && (
+            <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
+              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Registro completo de operações</span>
+              <div style={{ marginTop: 10 }}>
+                <SearchInput value={buscaOperacoes} onChange={setBuscaOperacoes} placeholder="buscar por ponto, ferramenta, operador ou OP..." />
+                <OperacoesHeader />
+                <motion.div variants={listVariants} initial="hidden" animate="show">
+                  <AnimatePresence initial={false}>
+                    {operacoesFiltradas.map((op) => (
+                      <motion.div key={op.ponto + op.hora} variants={itemVariants} layout exit={{ opacity: 0 }}>
+                        <OperacaoRow operacao={op} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {operacoesFiltradas.length === 0 && (
+                    <div style={{ padding: "16px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma operação encontrada</div>
+                  )}
+                </motion.div>
               </div>
-              <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>vence em {f.dias}d</span>
             </div>
-          ))}
-        </div>
-      )}
+          )}
+
+          {tab === "horas" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <Users size={15} color="var(--text-dim)" />
+                  <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por operador no mês</span>
+                </div>
+                <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+                  {operadores.map((o) => (
+                    <motion.div key={o.matricula} variants={itemVariants} layout>
+                      <OperadorCard operador={o} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </div>
+
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <Gauge size={15} color="var(--text-dim)" />
+                  <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por processo (ordem de produção)</span>
+                </div>
+                <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+                  {processos.map((p) => (
+                    <motion.div key={p.id} variants={itemVariants} layout>
+                      <ProcessoCard processo={p} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </div>
+            </div>
+          )}
+
+          {tab === "nc" && (
+            <div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 4 }}>
+                <SearchInput value={buscaNc} onChange={setBuscaNc} placeholder="buscar por id, descrição ou OS..." />
+                <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+                  {[
+                    { id: "aberta", label: "abertas" },
+                    { id: "resolvida", label: "resolvidas" },
+                    { id: "todas", label: "todas" },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setNcFiltro(f.id)}
+                      className="focus-ring mono"
+                      style={{
+                        background: ncFiltro === f.id ? "var(--panel-raised)" : "none",
+                        border: "1px solid var(--line)",
+                        color: ncFiltro === f.id ? "var(--text)" : "var(--text-faint)",
+                        fontSize: 11.5,
+                        padding: "8px 12px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gap: 10 }}>
+                <AnimatePresence initial={false}>
+                  {ncFiltradas.map((nc) => {
+                    const resolvida = nc.status === "resolvida";
+                    return (
+                      <motion.div
+                        key={nc.id}
+                        variants={itemVariants}
+                        layout
+                        exit={{ opacity: 0, x: 20 }}
+                        className="tag card-hover"
+                        style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, opacity: resolvida ? 0.6 : 1 }}
+                      >
+                        <div className="tag-clip" />
+                        <div>
+                          <div className="mono" style={{ fontSize: 11, color: resolvida ? "var(--text-faint)" : "var(--red)" }}>{nc.id} · {nc.os}</div>
+                          <div style={{ fontSize: 13.5, marginTop: 3, textDecoration: resolvida ? "line-through" : "none" }}>{nc.desc}</div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span
+                            className="mono"
+                            style={{
+                              fontSize: 10.5,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.04em",
+                              padding: "4px 9px",
+                              borderRadius: 3,
+                              background: nc.sev === "alta" ? "var(--red-dim)" : "var(--amber-dim)",
+                              color: nc.sev === "alta" ? "var(--red)" : "var(--amber)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {nc.sev}
+                          </span>
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => dispatch({ type: "RESOLVER_NC", payload: { id: nc.id } })}
+                            className="ghost-btn focus-ring"
+                            style={{ padding: "6px 10px", fontSize: 11.5, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
+                          >
+                            {resolvida ? <RotateCcw size={12} /> : <CheckCircle2 size={12} />}
+                            {resolvida ? "reabrir" : "resolver"}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+                {ncFiltradas.length === 0 && (
+                  <div style={{ padding: "16px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma não conformidade encontrada</div>
+                )}
+              </motion.div>
+            </div>
+          )}
+
+          {tab === "ferramentas" && (
+            <div>
+              <SearchInput value={buscaFerramentas} onChange={setBuscaFerramentas} placeholder="buscar por código ou tipo..." />
+              <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gap: 10 }}>
+                {ferramentasFiltradas.map((f) => (
+                  <motion.div
+                    key={f.id}
+                    variants={itemVariants}
+                    layout
+                    className="tag card-hover"
+                    style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  >
+                    <div className="tag-clip" />
+                    <div>
+                      <div className="mono" style={{ fontSize: 12.5 }}>{f.id}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 2 }}>{f.tipo}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>vence em {f.dias}d</span>
+                      <motion.button
+                        type="button"
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => dispatch({ type: "RENOVAR_FERRAMENTA", payload: { id: f.id } })}
+                        className="ghost-btn focus-ring"
+                        style={{ padding: "6px 10px", fontSize: 11.5 }}
+                      >
+                        renovar calibração
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+                {ferramentasFiltradas.length === 0 && (
+                  <div style={{ padding: "16px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma ferramenta encontrada</div>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

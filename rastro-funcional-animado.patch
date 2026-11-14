@@ -1,0 +1,1048 @@
+diff --git a/package.json b/package.json
+index b8f8c0a..745930b 100644
+--- a/package.json
++++ b/package.json
+@@ -9,6 +9,7 @@
+     "preview": "vite preview"
+   },
+   "dependencies": {
++    "framer-motion": "^11.2.10",
+     "lucide-react": "^0.383.0",
+     "react": "^18.2.0",
+     "react-dom": "^18.2.0",
+diff --git a/src/projects/rastro/App.jsx b/src/projects/rastro/App.jsx
+index 43e1e0e..75e7451 100644
+--- a/src/projects/rastro/App.jsx
++++ b/src/projects/rastro/App.jsx
+@@ -1,18 +1,51 @@
+-import { useState } from "react";
++import { useCallback, useState } from "react";
++import { AnimatePresence, motion } from "framer-motion";
+ import "./theme.css";
+ import Dashboard from "./screens/Dashboard.jsx";
+ import RegistroOperacao from "./screens/RegistroOperacao.jsx";
++import Toast from "./components/Toast.jsx";
++import { RastroProvider } from "./state/RastroContext.jsx";
+ 
+ export default function App() {
+   const [tela, setTela] = useState("dashboard");
++  const [toast, setToast] = useState(null);
++
++  const notify = useCallback((message, tone = "green") => {
++    const id = Date.now();
++    setToast({ id, message, tone });
++    window.setTimeout(() => {
++      setToast((t) => (t && t.id === id ? null : t));
++    }, 3600);
++  }, []);
+ 
+   return (
+-    <div className="rastro-root">
+-      {tela === "dashboard" ? (
+-        <Dashboard onNovoRegistro={() => setTela("registro")} />
+-      ) : (
+-        <RegistroOperacao onVoltar={() => setTela("dashboard")} />
+-      )}
+-    </div>
++    <RastroProvider>
++      <div className="rastro-root" style={{ position: "relative" }}>
++        <Toast toast={toast} onClose={() => setToast(null)} />
++        <AnimatePresence mode="wait">
++          {tela === "dashboard" ? (
++            <motion.div
++              key="dashboard"
++              initial={{ opacity: 0, y: 8 }}
++              animate={{ opacity: 1, y: 0 }}
++              exit={{ opacity: 0, y: -8 }}
++              transition={{ duration: 0.22, ease: "easeOut" }}
++            >
++              <Dashboard onNovoRegistro={() => setTela("registro")} />
++            </motion.div>
++          ) : (
++            <motion.div
++              key="registro"
++              initial={{ opacity: 0, y: 8 }}
++              animate={{ opacity: 1, y: 0 }}
++              exit={{ opacity: 0, y: -8 }}
++              transition={{ duration: 0.22, ease: "easeOut" }}
++            >
++              <RegistroOperacao onVoltar={() => setTela("dashboard")} notify={notify} />
++            </motion.div>
++          )}
++        </AnimatePresence>
++      </div>
++    </RastroProvider>
+   );
+ }
+diff --git a/src/projects/rastro/components/AeronaveCard.jsx b/src/projects/rastro/components/AeronaveCard.jsx
+index 67a7c7e..0e729fc 100644
+--- a/src/projects/rastro/components/AeronaveCard.jsx
++++ b/src/projects/rastro/components/AeronaveCard.jsx
+@@ -1,3 +1,5 @@
++import { motion } from "framer-motion";
++
+ export default function AeronaveCard({ aeronave }) {
+   return (
+     <div className="tag card-hover" style={{ padding: "16px 16px 14px 26px" }}>
+@@ -10,9 +12,11 @@ export default function AeronaveCard({ aeronave }) {
+       </div>
+       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+         <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 3, overflow: "hidden" }}>
+-          <div
++          <motion.div
++            initial={false}
++            animate={{ width: `${aeronave.progresso}%` }}
++            transition={{ type: "spring", stiffness: 120, damping: 20 }}
+             style={{
+-              width: `${aeronave.progresso}%`,
+               height: "100%",
+               background: aeronave.status === "atencao" ? "var(--amber)" : "var(--green)",
+               borderRadius: 3,
+diff --git a/src/projects/rastro/components/OperadorCard.jsx b/src/projects/rastro/components/OperadorCard.jsx
+index 3376d9b..c8181fb 100644
+--- a/src/projects/rastro/components/OperadorCard.jsx
++++ b/src/projects/rastro/components/OperadorCard.jsx
+@@ -1,3 +1,5 @@
++import { motion } from "framer-motion";
++
+ export default function OperadorCard({ operador }) {
+   const restante = Math.max(operador.metaMensal - operador.horasNoMes, 0);
+   const pct = Math.min((operador.horasNoMes / operador.metaMensal) * 100, 100);
+@@ -15,9 +17,11 @@ export default function OperadorCard({ operador }) {
+       </div>
+       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+         <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 3, overflow: "hidden" }}>
+-          <div
++          <motion.div
++            initial={false}
++            animate={{ width: `${pct}%` }}
++            transition={{ type: "spring", stiffness: 120, damping: 20 }}
+             style={{
+-              width: `${pct}%`,
+               height: "100%",
+               background: emDia ? "var(--green)" : "var(--amber)",
+               borderRadius: 3,
+diff --git a/src/projects/rastro/components/ProcessoCard.jsx b/src/projects/rastro/components/ProcessoCard.jsx
+index f0f5b8a..99347e6 100644
+--- a/src/projects/rastro/components/ProcessoCard.jsx
++++ b/src/projects/rastro/components/ProcessoCard.jsx
+@@ -1,3 +1,5 @@
++import { motion } from "framer-motion";
++
+ export default function ProcessoCard({ processo }) {
+   const restante = Math.max(processo.horasEstimadas - processo.horasRealizadas, 0);
+   const pct = Math.min((processo.horasRealizadas / processo.horasEstimadas) * 100, 100);
+@@ -14,9 +16,11 @@ export default function ProcessoCard({ processo }) {
+       </div>
+       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+         <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 3, overflow: "hidden" }}>
+-          <div
++          <motion.div
++            initial={false}
++            animate={{ width: `${pct}%` }}
++            transition={{ type: "spring", stiffness: 120, damping: 20 }}
+             style={{
+-              width: `${pct}%`,
+               height: "100%",
+               background: concluido ? "var(--green)" : "var(--amber)",
+               borderRadius: 3,
+diff --git a/src/projects/rastro/components/Toast.jsx b/src/projects/rastro/components/Toast.jsx
+new file mode 100644
+index 0000000..70005f8
+--- /dev/null
++++ b/src/projects/rastro/components/Toast.jsx
+@@ -0,0 +1,48 @@
++import { AnimatePresence, motion } from "framer-motion";
++import { CheckCircle2, AlertTriangle, X } from "lucide-react";
++
++export default function Toast({ toast, onClose }) {
++  return (
++    <div style={{ position: "fixed", top: 20, right: 20, zIndex: 100, display: "flex", flexDirection: "column", gap: 8 }}>
++      <AnimatePresence>
++        {toast && (
++          <motion.div
++            key={toast.id}
++            initial={{ opacity: 0, y: -16, scale: 0.96 }}
++            animate={{ opacity: 1, y: 0, scale: 1 }}
++            exit={{ opacity: 0, x: 60, transition: { duration: 0.18 } }}
++            transition={{ type: "spring", stiffness: 420, damping: 32 }}
++            className="rastro-root"
++            style={{
++              display: "flex",
++              alignItems: "center",
++              gap: 10,
++              padding: "12px 14px",
++              borderRadius: 6,
++              minWidth: 260,
++              maxWidth: 340,
++              background: "var(--panel-raised)",
++              border: `1px solid ${toast.tone === "red" ? "#5a2f2b" : "#2e5a3a"}`,
++              boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
++            }}
++          >
++            {toast.tone === "red" ? (
++              <AlertTriangle size={17} color="var(--red)" style={{ flexShrink: 0 }} />
++            ) : (
++              <CheckCircle2 size={17} color="var(--green)" style={{ flexShrink: 0 }} />
++            )}
++            <span style={{ fontSize: 13, color: "var(--text)", flex: 1 }}>{toast.message}</span>
++            <button
++              type="button"
++              onClick={onClose}
++              aria-label="Fechar notificação"
++              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", padding: 2, display: "flex" }}
++            >
++              <X size={14} />
++            </button>
++          </motion.div>
++        )}
++      </AnimatePresence>
++    </div>
++  );
++}
+diff --git a/src/projects/rastro/screens/Dashboard.jsx b/src/projects/rastro/screens/Dashboard.jsx
+index f9803ee..3a6d94e 100644
+--- a/src/projects/rastro/screens/Dashboard.jsx
++++ b/src/projects/rastro/screens/Dashboard.jsx
+@@ -1,12 +1,13 @@
+-import { useState } from "react";
+-import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users } from "lucide-react";
++import { useMemo, useState } from "react";
++import { AnimatePresence, motion } from "framer-motion";
++import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users, Search, CheckCircle2, RotateCcw } from "lucide-react";
+ import StatusPill from "../components/StatusPill.jsx";
+ import AeronaveCard from "../components/AeronaveCard.jsx";
+ import OperacaoRow from "../components/OperacaoRow.jsx";
+ import OperacoesHeader from "../components/OperacoesHeader.jsx";
+ import OperadorCard from "../components/OperadorCard.jsx";
+ import ProcessoCard from "../components/ProcessoCard.jsx";
+-import { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos } from "../data/mockData.js";
++import { useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
+ 
+ const TABS = [
+   { id: "producao", label: "Produção" },
+@@ -16,8 +17,62 @@ const TABS = [
+   { id: "ferramentas", label: "Ferramentas" },
+ ];
+ 
++const listVariants = {
++  hidden: {},
++  show: { transition: { staggerChildren: 0.035 } },
++};
++const itemVariants = {
++  hidden: { opacity: 0, y: 8 },
++  show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
++};
++
++function SearchInput({ value, onChange, placeholder }) {
++  return (
++    <div style={{ position: "relative", maxWidth: 320, marginBottom: 14 }}>
++      <Search size={14} color="var(--text-faint)" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
++      <input
++        className="field-input focus-ring mono"
++        style={{ paddingLeft: 34, fontSize: 12.5, padding: "9px 12px 9px 34px" }}
++        placeholder={placeholder}
++        value={value}
++        onChange={(e) => onChange(e.target.value)}
++      />
++    </div>
++  );
++}
++
+ export default function Dashboard({ onNovoRegistro }) {
+   const [tab, setTab] = useState("producao");
++  const [buscaOperacoes, setBuscaOperacoes] = useState("");
++  const [buscaNc, setBuscaNc] = useState("");
++  const [buscaFerramentas, setBuscaFerramentas] = useState("");
++  const [ncFiltro, setNcFiltro] = useState("aberta");
++
++  const { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos } = useRastroState();
++  const dispatch = useRastroDispatch();
++
++  const ncAbertas = useMemo(() => naoConformidades.filter((n) => n.status !== "resolvida"), [naoConformidades]);
++
++  const operacoesFiltradas = useMemo(() => {
++    const q = buscaOperacoes.trim().toLowerCase();
++    if (!q) return operacoes;
++    return operacoes.filter((op) =>
++      [op.ponto, op.ferramenta, op.operador, op.op].join(" ").toLowerCase().includes(q)
++    );
++  }, [operacoes, buscaOperacoes]);
++
++  const ncFiltradas = useMemo(() => {
++    const q = buscaNc.trim().toLowerCase();
++    return naoConformidades
++      .filter((nc) => (ncFiltro === "todas" ? true : (nc.status || "aberta") === ncFiltro))
++      .filter((nc) => !q || [nc.id, nc.desc, nc.os].join(" ").toLowerCase().includes(q));
++  }, [naoConformidades, buscaNc, ncFiltro]);
++
++  const ferramentasFiltradas = useMemo(() => {
++    const q = buscaFerramentas.trim().toLowerCase();
++    if (!q) return ferramentas;
++    return ferramentas.filter((f) => [f.id, f.tipo].join(" ").toLowerCase().includes(q));
++  }, [ferramentas, buscaFerramentas]);
+ 
+   return (
+     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 24px 60px" }}>
+@@ -38,17 +93,27 @@ export default function Dashboard({ onNovoRegistro }) {
+         </div>
+ 
+         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+-          <StatusPill icon={Gauge} label="EM PRODUÇÃO" value={aeronaves.length} tone="neutral" />
+-          <StatusPill icon={ShieldAlert} label="NC ABERTAS" value={naoConformidades.length} tone="red" />
++          <motion.div key={aeronaves.length} initial={{ scale: 1.15 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
++            <StatusPill icon={Gauge} label="EM PRODUÇÃO" value={aeronaves.length} tone="neutral" />
++          </motion.div>
++          <motion.div key={`nc-${ncAbertas.length}`} initial={{ scale: 1.15 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
++            <StatusPill icon={ShieldAlert} label="NC ABERTAS" value={ncAbertas.length} tone="red" />
++          </motion.div>
+           <StatusPill icon={Clock} label="CALIBRAÇÃO VENCENDO" value={ferramentas.length} tone="amber" />
+-          <button type="button" className="primary-btn focus-ring" onClick={onNovoRegistro} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px" }}>
++          <motion.button
++            type="button"
++            className="primary-btn focus-ring"
++            onClick={onNovoRegistro}
++            whileTap={{ scale: 0.97 }}
++            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px" }}
++          >
+             <ClipboardPlus size={15} /> Registrar operação
+-          </button>
++          </motion.button>
+         </div>
+       </div>
+ 
+       {/* Tabs */}
+-      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--line)" }}>
++      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--line)", position: "relative" }}>
+         {TABS.map((t) => (
+           <button
+             key={t.id}
+@@ -62,153 +127,284 @@ export default function Dashboard({ onNovoRegistro }) {
+               fontSize: 13.5,
+               fontFamily: "'IBM Plex Sans', sans-serif",
+               color: tab === t.id ? "var(--text)" : "var(--text-faint)",
+-              borderBottom: tab === t.id ? "2px solid var(--amber)" : "2px solid transparent",
++              position: "relative",
+               marginBottom: -1,
+             }}
+           >
+             {t.label}
++            {tab === t.id && (
++              <motion.div
++                layoutId="tab-underline"
++                transition={{ type: "spring", stiffness: 500, damping: 40 }}
++                style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2, background: "var(--amber)" }}
++              />
++            )}
+           </button>
+         ))}
+       </div>
+ 
+       {/* Aircraft grid — always visible as primary context */}
+-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12, marginBottom: 28 }}>
++      <motion.div
++        variants={listVariants}
++        initial="hidden"
++        animate="show"
++        style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12, marginBottom: 28 }}
++      >
+         {aeronaves.map((a) => (
+-          <AeronaveCard key={a.serie} aeronave={a} />
++          <motion.div key={a.serie} variants={itemVariants} layout>
++            <AeronaveCard aeronave={a} />
++          </motion.div>
+         ))}
+-      </div>
+-
+-      {tab === "producao" && (
+-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
+-          <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
+-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+-              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Últimas operações registradas</span>
+-              <button
+-                className="focus-ring mono"
+-                style={{ background: "none", border: "1px solid var(--line)", color: "var(--text-dim)", fontSize: 11.5, padding: "5px 10px", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+-                onClick={() => setTab("operacoes")}
+-              >
+-                ver todas <ChevronRight size={12} />
+-              </button>
+-            </div>
+-            <OperacoesHeader />
+-            {operacoes.map((op) => (
+-              <OperacaoRow key={op.ponto + op.hora} operacao={op} />
+-            ))}
+-          </div>
++      </motion.div>
+ 
+-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+-            <div style={{ background: "var(--red-dim)", border: "1px solid #5a2f2b", borderRadius: 5, padding: 16 }}>
+-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+-                <AlertTriangle size={15} color="var(--red)" />
+-                <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Não conformidades recentes</span>
++      <AnimatePresence mode="wait">
++        <motion.div
++          key={tab}
++          initial={{ opacity: 0, y: 6 }}
++          animate={{ opacity: 1, y: 0 }}
++          exit={{ opacity: 0, y: -6 }}
++          transition={{ duration: 0.16 }}
++        >
++          {tab === "producao" && (
++            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
++              <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
++                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
++                  <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Últimas operações registradas</span>
++                  <button
++                    className="focus-ring mono"
++                    style={{ background: "none", border: "1px solid var(--line)", color: "var(--text-dim)", fontSize: 11.5, padding: "5px 10px", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
++                    onClick={() => setTab("operacoes")}
++                  >
++                    ver todas <ChevronRight size={12} />
++                  </button>
++                </div>
++                <OperacoesHeader />
++                <motion.div variants={listVariants} initial="hidden" animate="show">
++                  <AnimatePresence initial={false}>
++                    {operacoes.slice(0, 6).map((op) => (
++                      <motion.div key={op.ponto + op.hora} variants={itemVariants} layout exit={{ opacity: 0 }}>
++                        <OperacaoRow operacao={op} />
++                      </motion.div>
++                    ))}
++                  </AnimatePresence>
++                </motion.div>
+               </div>
+-              {naoConformidades.map((nc) => (
+-                <div key={nc.id} style={{ padding: "8px 0", borderTop: "1px solid #4a2825" }}>
+-                  <div className="mono" style={{ fontSize: 11, color: "var(--red)", marginBottom: 2 }}>{nc.id} · {nc.os}</div>
+-                  <div style={{ fontSize: 12.5, color: "var(--text)" }}>{nc.desc}</div>
++
++              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
++                <div style={{ background: "var(--red-dim)", border: "1px solid #5a2f2b", borderRadius: 5, padding: 16 }}>
++                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
++                    <AlertTriangle size={15} color="var(--red)" />
++                    <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Não conformidades recentes</span>
++                  </div>
++                  <AnimatePresence initial={false}>
++                    {ncAbertas.slice(0, 4).map((nc) => (
++                      <motion.div key={nc.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} style={{ overflow: "hidden" }}>
++                        <div style={{ padding: "8px 0", borderTop: "1px solid #4a2825" }}>
++                          <div className="mono" style={{ fontSize: 11, color: "var(--red)", marginBottom: 2 }}>{nc.id} · {nc.os}</div>
++                          <div style={{ fontSize: 12.5, color: "var(--text)" }}>{nc.desc}</div>
++                        </div>
++                      </motion.div>
++                    ))}
++                    {ncAbertas.length === 0 && (
++                      <div style={{ padding: "8px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma NC aberta</div>
++                    )}
++                  </AnimatePresence>
+                 </div>
+-              ))}
+-            </div>
+ 
+-            <div style={{ background: "var(--amber-dim)", border: "1px solid #7a5c14", borderRadius: 5, padding: 16 }}>
+-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+-                <Clock size={15} color="var(--amber)" />
+-                <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Calibração vencendo</span>
+-              </div>
+-              {ferramentas.map((f) => (
+-                <div key={f.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid #5c4611" }}>
+-                  <span className="mono" style={{ fontSize: 12, color: "var(--text)" }}>{f.id}</span>
+-                  <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>{f.dias}d — {f.venc}</span>
++                <div style={{ background: "var(--amber-dim)", border: "1px solid #7a5c14", borderRadius: 5, padding: 16 }}>
++                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
++                    <Clock size={15} color="var(--amber)" />
++                    <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Calibração vencendo</span>
++                  </div>
++                  {ferramentas.map((f) => (
++                    <div key={f.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid #5c4611" }}>
++                      <span className="mono" style={{ fontSize: 12, color: "var(--text)" }}>{f.id}</span>
++                      <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>{f.dias}d — {f.venc}</span>
++                    </div>
++                  ))}
+                 </div>
+-              ))}
+-            </div>
+-          </div>
+-        </div>
+-      )}
+-
+-      {tab === "operacoes" && (
+-        <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
+-          <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Registro completo de operações</span>
+-          <div style={{ marginTop: 10 }}>
+-            <OperacoesHeader />
+-            {operacoes.map((op) => (
+-              <OperacaoRow key={op.ponto + op.hora} operacao={op} />
+-            ))}
+-          </div>
+-        </div>
+-      )}
+-
+-      {tab === "horas" && (
+-        <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+-          <div>
+-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+-              <Users size={15} color="var(--text-dim)" />
+-              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por operador no mês</span>
+-            </div>
+-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+-              {operadores.map((o) => (
+-                <OperadorCard key={o.matricula} operador={o} />
+-              ))}
++              </div>
+             </div>
+-          </div>
++          )}
+ 
+-          <div>
+-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+-              <Gauge size={15} color="var(--text-dim)" />
+-              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por processo (ordem de produção)</span>
+-            </div>
+-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+-              {processos.map((p) => (
+-                <ProcessoCard key={p.id} processo={p} />
+-              ))}
++          {tab === "operacoes" && (
++            <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
++              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Registro completo de operações</span>
++              <div style={{ marginTop: 10 }}>
++                <SearchInput value={buscaOperacoes} onChange={setBuscaOperacoes} placeholder="buscar por ponto, ferramenta, operador ou OP..." />
++                <OperacoesHeader />
++                <motion.div variants={listVariants} initial="hidden" animate="show">
++                  <AnimatePresence initial={false}>
++                    {operacoesFiltradas.map((op) => (
++                      <motion.div key={op.ponto + op.hora} variants={itemVariants} layout exit={{ opacity: 0 }}>
++                        <OperacaoRow operacao={op} />
++                      </motion.div>
++                    ))}
++                  </AnimatePresence>
++                  {operacoesFiltradas.length === 0 && (
++                    <div style={{ padding: "16px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma operação encontrada</div>
++                  )}
++                </motion.div>
++              </div>
+             </div>
+-          </div>
+-        </div>
+-      )}
++          )}
+ 
+-      {tab === "nc" && (
+-        <div style={{ display: "grid", gap: 10 }}>
+-          {naoConformidades.map((nc) => (
+-            <div key={nc.id} className="tag card-hover" style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+-              <div className="tag-clip" />
++          {tab === "horas" && (
++            <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+               <div>
+-                <div className="mono" style={{ fontSize: 11, color: "var(--red)" }}>{nc.id} · {nc.os}</div>
+-                <div style={{ fontSize: 13.5, marginTop: 3 }}>{nc.desc}</div>
++                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
++                  <Users size={15} color="var(--text-dim)" />
++                  <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por operador no mês</span>
++                </div>
++                <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
++                  {operadores.map((o) => (
++                    <motion.div key={o.matricula} variants={itemVariants} layout>
++                      <OperadorCard operador={o} />
++                    </motion.div>
++                  ))}
++                </motion.div>
+               </div>
+-              <span
+-                className="mono"
+-                style={{
+-                  fontSize: 10.5,
+-                  textTransform: "uppercase",
+-                  letterSpacing: "0.04em",
+-                  padding: "4px 9px",
+-                  borderRadius: 3,
+-                  background: nc.sev === "alta" ? "var(--red-dim)" : "var(--amber-dim)",
+-                  color: nc.sev === "alta" ? "var(--red)" : "var(--amber)",
+-                }}
+-              >
+-                {nc.sev}
+-              </span>
+-            </div>
+-          ))}
+-        </div>
+-      )}
+ 
+-      {tab === "ferramentas" && (
+-        <div style={{ display: "grid", gap: 10 }}>
+-          {ferramentas.map((f) => (
+-            <div key={f.id} className="tag card-hover" style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+-              <div className="tag-clip" />
+               <div>
+-                <div className="mono" style={{ fontSize: 12.5 }}>{f.id}</div>
+-                <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 2 }}>{f.tipo}</div>
++                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
++                  <Gauge size={15} color="var(--text-dim)" />
++                  <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Horas por processo (ordem de produção)</span>
++                </div>
++                <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
++                  {processos.map((p) => (
++                    <motion.div key={p.id} variants={itemVariants} layout>
++                      <ProcessoCard processo={p} />
++                    </motion.div>
++                  ))}
++                </motion.div>
+               </div>
+-              <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>vence em {f.dias}d</span>
+             </div>
+-          ))}
+-        </div>
+-      )}
++          )}
++
++          {tab === "nc" && (
++            <div>
++              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 4 }}>
++                <SearchInput value={buscaNc} onChange={setBuscaNc} placeholder="buscar por id, descrição ou OS..." />
++                <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
++                  {[
++                    { id: "aberta", label: "abertas" },
++                    { id: "resolvida", label: "resolvidas" },
++                    { id: "todas", label: "todas" },
++                  ].map((f) => (
++                    <button
++                      key={f.id}
++                      onClick={() => setNcFiltro(f.id)}
++                      className="focus-ring mono"
++                      style={{
++                        background: ncFiltro === f.id ? "var(--panel-raised)" : "none",
++                        border: "1px solid var(--line)",
++                        color: ncFiltro === f.id ? "var(--text)" : "var(--text-faint)",
++                        fontSize: 11.5,
++                        padding: "8px 12px",
++                        borderRadius: 4,
++                        cursor: "pointer",
++                      }}
++                    >
++                      {f.label}
++                    </button>
++                  ))}
++                </div>
++              </div>
++              <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gap: 10 }}>
++                <AnimatePresence initial={false}>
++                  {ncFiltradas.map((nc) => {
++                    const resolvida = nc.status === "resolvida";
++                    return (
++                      <motion.div
++                        key={nc.id}
++                        variants={itemVariants}
++                        layout
++                        exit={{ opacity: 0, x: 20 }}
++                        className="tag card-hover"
++                        style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, opacity: resolvida ? 0.6 : 1 }}
++                      >
++                        <div className="tag-clip" />
++                        <div>
++                          <div className="mono" style={{ fontSize: 11, color: resolvida ? "var(--text-faint)" : "var(--red)" }}>{nc.id} · {nc.os}</div>
++                          <div style={{ fontSize: 13.5, marginTop: 3, textDecoration: resolvida ? "line-through" : "none" }}>{nc.desc}</div>
++                        </div>
++                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
++                          <span
++                            className="mono"
++                            style={{
++                              fontSize: 10.5,
++                              textTransform: "uppercase",
++                              letterSpacing: "0.04em",
++                              padding: "4px 9px",
++                              borderRadius: 3,
++                              background: nc.sev === "alta" ? "var(--red-dim)" : "var(--amber-dim)",
++                              color: nc.sev === "alta" ? "var(--red)" : "var(--amber)",
++                              whiteSpace: "nowrap",
++                            }}
++                          >
++                            {nc.sev}
++                          </span>
++                          <motion.button
++                            type="button"
++                            whileTap={{ scale: 0.95 }}
++                            onClick={() => dispatch({ type: "RESOLVER_NC", payload: { id: nc.id } })}
++                            className="ghost-btn focus-ring"
++                            style={{ padding: "6px 10px", fontSize: 11.5, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
++                          >
++                            {resolvida ? <RotateCcw size={12} /> : <CheckCircle2 size={12} />}
++                            {resolvida ? "reabrir" : "resolver"}
++                          </motion.button>
++                        </div>
++                      </motion.div>
++                    );
++                  })}
++                </AnimatePresence>
++                {ncFiltradas.length === 0 && (
++                  <div style={{ padding: "16px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma não conformidade encontrada</div>
++                )}
++              </motion.div>
++            </div>
++          )}
++
++          {tab === "ferramentas" && (
++            <div>
++              <SearchInput value={buscaFerramentas} onChange={setBuscaFerramentas} placeholder="buscar por código ou tipo..." />
++              <motion.div variants={listVariants} initial="hidden" animate="show" style={{ display: "grid", gap: 10 }}>
++                {ferramentasFiltradas.map((f) => (
++                  <motion.div
++                    key={f.id}
++                    variants={itemVariants}
++                    layout
++                    className="tag card-hover"
++                    style={{ padding: "14px 16px 14px 26px", display: "flex", justifyContent: "space-between", alignItems: "center" }}
++                  >
++                    <div className="tag-clip" />
++                    <div>
++                      <div className="mono" style={{ fontSize: 12.5 }}>{f.id}</div>
++                      <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 2 }}>{f.tipo}</div>
++                    </div>
++                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
++                      <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>vence em {f.dias}d</span>
++                      <motion.button
++                        type="button"
++                        whileTap={{ scale: 0.95 }}
++                        onClick={() => dispatch({ type: "RENOVAR_FERRAMENTA", payload: { id: f.id } })}
++                        className="ghost-btn focus-ring"
++                        style={{ padding: "6px 10px", fontSize: 11.5 }}
++                      >
++                        renovar calibração
++                      </motion.button>
++                    </div>
++                  </motion.div>
++                ))}
++                {ferramentasFiltradas.length === 0 && (
++                  <div style={{ padding: "16px 0", fontSize: 12.5, color: "var(--text-faint)" }}>nenhuma ferramenta encontrada</div>
++                )}
++              </motion.div>
++            </div>
++          )}
++        </motion.div>
++      </AnimatePresence>
+     </div>
+   );
+ }
+diff --git a/src/projects/rastro/screens/RegistroOperacao.jsx b/src/projects/rastro/screens/RegistroOperacao.jsx
+index 70b35b6..57a5ee2 100644
+--- a/src/projects/rastro/screens/RegistroOperacao.jsx
++++ b/src/projects/rastro/screens/RegistroOperacao.jsx
+@@ -1,7 +1,8 @@
+ import { useState, useMemo } from "react";
++import { motion } from "framer-motion";
+ import { ArrowLeft, Wrench, ScanLine, CheckCircle2, AlertTriangle, User, RotateCcw } from "lucide-react";
+ import Select from "../components/Select.jsx";
+-import { aeronaves, pontos } from "../data/mockData.js";
++import { pontos, useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
+ 
+ function Row({ k, v, vColor }) {
+   return (
+@@ -12,7 +13,10 @@ function Row({ k, v, vColor }) {
+   );
+ }
+ 
+-export default function RegistroOperacao({ onVoltar }) {
++export default function RegistroOperacao({ onVoltar, notify }) {
++  const { aeronaves } = useRastroState();
++  const dispatch = useRastroDispatch();
++
+   const [aeronave, setAeronave] = useState(null);
+   const [ponto, setPonto] = useState(null);
+   const [ferramenta, setFerramenta] = useState("");
+@@ -30,7 +34,18 @@ export default function RegistroOperacao({ onVoltar }) {
+ 
+   function registrar() {
+     if (!pronto) return;
++    dispatch({
++      type: "REGISTRAR_OPERACAO",
++      payload: { aeronaveSerie: aeronave, ponto, ferramenta, operador, valor },
++    });
+     setSalvo(true);
++    if (notify) {
++      if (status === "ok") {
++        notify("Operação registrada — dentro da faixa especificada", "green");
++      } else {
++        notify("Operação registrada — não conformidade aberta automaticamente", "red");
++      }
++    }
+   }
+ 
+   function novoRegistro() {
+@@ -65,7 +80,12 @@ export default function RegistroOperacao({ onVoltar }) {
+       </div>
+ 
+       {!salvo ? (
+-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
++        <motion.div
++          initial={{ opacity: 0, y: 6 }}
++          animate={{ opacity: 1, y: 0 }}
++          transition={{ duration: 0.18 }}
++          style={{ display: "flex", flexDirection: "column", gap: 16 }}
++        >
+           <Select
+             label="Aeronave"
+             value={aeronave}
+@@ -86,12 +106,16 @@ export default function RegistroOperacao({ onVoltar }) {
+           />
+ 
+           {ponto && (
+-            <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
++            <motion.div
++              initial={{ opacity: 0, height: 0 }}
++              animate={{ opacity: 1, height: "auto" }}
++              style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", overflow: "hidden" }}
++            >
+               <span style={{ fontSize: 12.5, color: "var(--text-dim)" }}>Faixa especificada</span>
+               <span className="mono" style={{ fontSize: 14, color: "var(--text)", fontWeight: 600 }}>
+                 {ponto.min.toFixed(1)}–{ponto.max.toFixed(1)} Nm
+               </span>
+-            </div>
++            </motion.div>
+           )}
+ 
+           <div>
+@@ -132,8 +156,10 @@ export default function RegistroOperacao({ onVoltar }) {
+             <label className="mono" style={{ fontSize: 11, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 7 }}>
+               Valor aplicado (Nm)
+             </label>
+-            <input
++            <motion.input
+               className="field-input focus-ring mono"
++              animate={status === "nc" ? { x: [0, -4, 4, -4, 0] } : {}}
++              transition={{ duration: 0.3 }}
+               style={{
+                 fontSize: 26,
+                 fontWeight: 600,
+@@ -147,7 +173,11 @@ export default function RegistroOperacao({ onVoltar }) {
+               onChange={(e) => setValor(e.target.value)}
+             />
+             {status && (
+-              <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, justifyContent: "center" }}>
++              <motion.div
++                initial={{ opacity: 0, y: -4 }}
++                animate={{ opacity: 1, y: 0 }}
++                style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, justifyContent: "center" }}
++              >
+                 {status === "ok" ? (
+                   <>
+                     <CheckCircle2 size={15} color="var(--green)" />
+@@ -159,16 +189,29 @@ export default function RegistroOperacao({ onVoltar }) {
+                     <span style={{ fontSize: 13, color: "var(--red)" }}>Fora da faixa — será aberta uma não conformidade</span>
+                   </>
+                 )}
+-              </div>
++              </motion.div>
+             )}
+           </div>
+ 
+-          <button type="button" className="primary-btn focus-ring" disabled={!pronto} onClick={registrar} style={{ marginTop: 6 }}>
++          <motion.button
++            type="button"
++            className="primary-btn focus-ring"
++            disabled={!pronto}
++            onClick={registrar}
++            whileTap={pronto ? { scale: 0.98 } : {}}
++            style={{ marginTop: 6 }}
++          >
+             Registrar operação
+-          </button>
+-        </div>
++          </motion.button>
++        </motion.div>
+       ) : (
+-        <div className="tag" style={{ padding: "22px 20px 22px 30px", textAlign: "left" }}>
++        <motion.div
++          initial={{ opacity: 0, scale: 0.97 }}
++          animate={{ opacity: 1, scale: 1 }}
++          transition={{ duration: 0.22, ease: "easeOut" }}
++          className="tag"
++          style={{ padding: "22px 20px 22px 30px", textAlign: "left" }}
++        >
+           <div className="tag-clip" />
+           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
+             {status === "ok" ? (
+@@ -196,7 +239,7 @@ export default function RegistroOperacao({ onVoltar }) {
+               Voltar ao painel
+             </button>
+           </div>
+-        </div>
++        </motion.div>
+       )}
+     </div>
+   );
+diff --git a/src/projects/rastro/state/RastroContext.jsx b/src/projects/rastro/state/RastroContext.jsx
+new file mode 100644
+index 0000000..2dd0cc3
+--- /dev/null
++++ b/src/projects/rastro/state/RastroContext.jsx
+@@ -0,0 +1,170 @@
++import { createContext, useContext, useEffect, useReducer } from "react";
++import {
++  aeronaves as seedAeronaves,
++  operacoes as seedOperacoes,
++  operadores as seedOperadores,
++  processos as seedProcessos,
++  naoConformidades as seedNaoConformidades,
++  ferramentas as seedFerramentas,
++  pontos,
++} from "../data/mockData.js";
++
++const STORAGE_KEY = "rastro-state-v1";
++
++function loadInitialState() {
++  try {
++    const raw = window.localStorage.getItem(STORAGE_KEY);
++    if (raw) return JSON.parse(raw);
++  } catch {
++    // localStorage indisponível ou corrompido — segue com os dados de exemplo
++  }
++  return {
++    aeronaves: seedAeronaves,
++    operacoes: seedOperacoes,
++    operadores: seedOperadores,
++    processos: seedProcessos,
++    naoConformidades: seedNaoConformidades,
++    ferramentas: seedFerramentas,
++  };
++}
++
++function nowHHMM() {
++  const d = new Date();
++  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
++}
++
++function reducer(state, action) {
++  switch (action.type) {
++    case "REGISTRAR_OPERACAO": {
++      const { aeronaveSerie, ponto, ferramenta, operador, valor } = action.payload;
++      const numero = parseFloat(String(valor).replace(",", "."));
++      const ok = numero >= ponto.min && numero <= ponto.max;
++
++      // Processo ativo = o que está ligado à aeronave selecionada (simplificação: primeiro processo
++      // cujo nome cita o número de série, senão o processo com menos horas realizadas em relação à meta).
++      const processoAlvo =
++        state.processos.find((p) => aeronaveSerie.includes(p.nome.split("MSN ")[1] || "__none__")) ||
++        state.processos[0];
++
++      const novaOperacao = {
++        ponto: ponto.label,
++        spec: `${ponto.min.toFixed(1)}–${ponto.max.toFixed(1)}`,
++        aplicado: String(valor).replace(",", "."),
++        ferramenta,
++        operador,
++        hora: nowHHMM(),
++        horas: 0.5,
++        op: processoAlvo ? processoAlvo.id : "—",
++        ok,
++      };
++
++      const operacoes = [novaOperacao, ...state.operacoes];
++
++      const aeronaves = state.aeronaves.map((a) =>
++        a.serie === aeronaveSerie
++          ? {
++              ...a,
++              progresso: Math.min(100, a.progresso + (ok ? 2 : 1)),
++              status: ok ? a.status : "atencao",
++            }
++          : a
++      );
++
++      const operadores = state.operadores.map((o) =>
++        o.nome === operador ? { ...o, horasNoMes: +(o.horasNoMes + novaOperacao.horas).toFixed(1) } : o
++      );
++
++      const processos = processoAlvo
++        ? state.processos.map((p) =>
++            p.id === processoAlvo.id
++              ? { ...p, horasRealizadas: +(p.horasRealizadas + novaOperacao.horas).toFixed(1) }
++              : p
++          )
++        : state.processos;
++
++      let naoConformidades = state.naoConformidades;
++      let novaNC = null;
++      if (!ok) {
++        novaNC = {
++          id: `NC-${String(Math.floor(1000 + Math.random() * 9000))}`,
++          desc: `Torque fora da faixa (${novaOperacao.aplicado} Nm, especificado ${novaOperacao.spec} Nm) — ${ponto.label}`,
++          sev: Math.abs(numero - (numero < ponto.min ? ponto.min : ponto.max)) > (ponto.max - ponto.min) * 0.3 ? "alta" : "media",
++          os: `OS-${String(Math.floor(10000 + Math.random() * 90000))}`,
++          status: "aberta",
++          criadaEm: nowHHMM(),
++        };
++        naoConformidades = [novaNC, ...state.naoConformidades];
++      }
++
++      return { ...state, operacoes, aeronaves, operadores, processos, naoConformidades, _ultimoRegistro: { ok, novaNC } };
++    }
++
++    case "RESOLVER_NC": {
++      const naoConformidades = state.naoConformidades.map((nc) =>
++        nc.id === action.payload.id ? { ...nc, status: nc.status === "aberta" ? "resolvida" : "aberta" } : nc
++      );
++      return { ...state, naoConformidades };
++    }
++
++    case "RENOVAR_FERRAMENTA": {
++      const ferramentas = state.ferramentas.map((f) =>
++        f.id === action.payload.id ? { ...f, dias: 90, venc: "renovada" } : f
++      );
++      return { ...state, ferramentas };
++    }
++
++    case "RESET": {
++      try {
++        window.localStorage.removeItem(STORAGE_KEY);
++      } catch {
++        // ignore
++      }
++      return {
++        aeronaves: seedAeronaves,
++        operacoes: seedOperacoes,
++        operadores: seedOperadores,
++        processos: seedProcessos,
++        naoConformidades: seedNaoConformidades,
++        ferramentas: seedFerramentas,
++      };
++    }
++
++    default:
++      return state;
++  }
++}
++
++const RastroStateContext = createContext(null);
++const RastroDispatchContext = createContext(null);
++
++export function RastroProvider({ children }) {
++  const [state, dispatch] = useReducer(reducer, undefined, loadInitialState);
++
++  useEffect(() => {
++    try {
++      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
++    } catch {
++      // armazenamento indisponível (modo privado, quota) — segue só em memória
++    }
++  }, [state]);
++
++  return (
++    <RastroStateContext.Provider value={state}>
++      <RastroDispatchContext.Provider value={dispatch}>{children}</RastroDispatchContext.Provider>
++    </RastroStateContext.Provider>
++  );
++}
++
++export function useRastroState() {
++  const ctx = useContext(RastroStateContext);
++  if (!ctx) throw new Error("useRastroState precisa estar dentro de <RastroProvider>");
++  return ctx;
++}
++
++export function useRastroDispatch() {
++  const ctx = useContext(RastroDispatchContext);
++  if (!ctx) throw new Error("useRastroDispatch precisa estar dentro de <RastroProvider>");
++  return ctx;
++}
++
++export { pontos };

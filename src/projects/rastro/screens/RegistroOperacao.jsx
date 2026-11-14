@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
 import { ArrowLeft, Wrench, ScanLine, CheckCircle2, AlertTriangle, User, RotateCcw } from "lucide-react";
 import Select from "../components/Select.jsx";
-import { aeronaves, pontos } from "../data/mockData.js";
+import { pontos, useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
 
 function Row({ k, v, vColor }) {
   return (
@@ -12,7 +13,10 @@ function Row({ k, v, vColor }) {
   );
 }
 
-export default function RegistroOperacao({ onVoltar }) {
+export default function RegistroOperacao({ onVoltar, notify }) {
+  const { aeronaves } = useRastroState();
+  const dispatch = useRastroDispatch();
+
   const [aeronave, setAeronave] = useState(null);
   const [ponto, setPonto] = useState(null);
   const [ferramenta, setFerramenta] = useState("");
@@ -30,7 +34,18 @@ export default function RegistroOperacao({ onVoltar }) {
 
   function registrar() {
     if (!pronto) return;
+    dispatch({
+      type: "REGISTRAR_OPERACAO",
+      payload: { aeronaveSerie: aeronave, ponto, ferramenta, operador, valor },
+    });
     setSalvo(true);
+    if (notify) {
+      if (status === "ok") {
+        notify("Operação registrada — dentro da faixa especificada", "green");
+      } else {
+        notify("Operação registrada — não conformidade aberta automaticamente", "red");
+      }
+    }
   }
 
   function novoRegistro() {
@@ -65,7 +80,12 @@ export default function RegistroOperacao({ onVoltar }) {
       </div>
 
       {!salvo ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18 }}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}
+        >
           <Select
             label="Aeronave"
             value={aeronave}
@@ -86,12 +106,16 @@ export default function RegistroOperacao({ onVoltar }) {
           />
 
           {ponto && (
-            <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", overflow: "hidden" }}
+            >
               <span style={{ fontSize: 12.5, color: "var(--text-dim)" }}>Faixa especificada</span>
               <span className="mono" style={{ fontSize: 14, color: "var(--text)", fontWeight: 600 }}>
                 {ponto.min.toFixed(1)}–{ponto.max.toFixed(1)} Nm
               </span>
-            </div>
+            </motion.div>
           )}
 
           <div>
@@ -132,8 +156,10 @@ export default function RegistroOperacao({ onVoltar }) {
             <label className="mono" style={{ fontSize: 11, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 7 }}>
               Valor aplicado (Nm)
             </label>
-            <input
+            <motion.input
               className="field-input focus-ring mono"
+              animate={status === "nc" ? { x: [0, -4, 4, -4, 0] } : {}}
+              transition={{ duration: 0.3 }}
               style={{
                 fontSize: 26,
                 fontWeight: 600,
@@ -147,7 +173,11 @@ export default function RegistroOperacao({ onVoltar }) {
               onChange={(e) => setValor(e.target.value)}
             />
             {status && (
-              <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, justifyContent: "center" }}>
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 9, justifyContent: "center" }}
+              >
                 {status === "ok" ? (
                   <>
                     <CheckCircle2 size={15} color="var(--green)" />
@@ -159,16 +189,29 @@ export default function RegistroOperacao({ onVoltar }) {
                     <span style={{ fontSize: 13, color: "var(--red)" }}>Fora da faixa — será aberta uma não conformidade</span>
                   </>
                 )}
-              </div>
+              </motion.div>
             )}
           </div>
 
-          <button type="button" className="primary-btn focus-ring" disabled={!pronto} onClick={registrar} style={{ marginTop: 6 }}>
+          <motion.button
+            type="button"
+            className="primary-btn focus-ring"
+            disabled={!pronto}
+            onClick={registrar}
+            whileTap={pronto ? { scale: 0.98 } : {}}
+            style={{ marginTop: 6 }}
+          >
             Registrar operação
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       ) : (
-        <div className="tag" style={{ padding: "22px 20px 22px 30px", textAlign: "left" }}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="tag"
+          style={{ padding: "22px 20px 22px 30px", textAlign: "left" }}
+        >
           <div className="tag-clip" />
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
             {status === "ok" ? (
@@ -196,7 +239,7 @@ export default function RegistroOperacao({ onVoltar }) {
               Voltar ao painel
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

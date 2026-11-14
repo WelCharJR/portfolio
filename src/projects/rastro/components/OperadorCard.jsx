@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 export default function OperadorCard({ operador }) {
   const restante = Math.max(operador.metaMensal - operador.horasNoMes, 0);
   const pct = Math.min((operador.horasNoMes / operador.metaMensal) * 100, 100);
@@ -15,9 +17,11 @@ export default function OperadorCard({ operador }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
         <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 3, overflow: "hidden" }}>
-          <div
+          <motion.div
+            initial={false}
+            animate={{ width: `${pct}%` }}
+            transition={{ type: "spring", stiffness: 120, damping: 20 }}
             style={{
-              width: `${pct}%`,
               height: "100%",
               background: emDia ? "var(--green)" : "var(--amber)",
               borderRadius: 3,

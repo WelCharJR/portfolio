@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 export default function AeronaveCard({ aeronave }) {
   return (
     <div className="tag card-hover" style={{ padding: "16px 16px 14px 26px" }}>
@@ -10,9 +12,11 @@ export default function AeronaveCard({ aeronave }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 3, overflow: "hidden" }}>
-          <div
+          <motion.div
+            initial={false}
+            animate={{ width: `${aeronave.progresso}%` }}
+            transition={{ type: "spring", stiffness: 120, damping: 20 }}
             style={{
-              width: `${aeronave.progresso}%`,
               height: "100%",
               background: aeronave.status === "atencao" ? "var(--amber)" : "var(--green)",
               borderRadius: 3,

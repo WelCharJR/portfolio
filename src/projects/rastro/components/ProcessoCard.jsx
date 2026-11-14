@@ -1,3 +1,5 @@
+import { motion } from "framer-motion";
+
 export default function ProcessoCard({ processo }) {
   const restante = Math.max(processo.horasEstimadas - processo.horasRealizadas, 0);
   const pct = Math.min((processo.horasRealizadas / processo.horasEstimadas) * 100, 100);
@@ -14,9 +16,11 @@ export default function ProcessoCard({ processo }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
         <div style={{ flex: 1, height: 5, background: "var(--line-soft)", borderRadius: 3, overflow: "hidden" }}>
-          <div
+          <motion.div
+            initial={false}
+            animate={{ width: `${pct}%` }}
+            transition={{ type: "spring", stiffness: 120, damping: 20 }}
             style={{
-              width: `${pct}%`,
               height: "100%",
               background: concluido ? "var(--green)" : "var(--amber)",
               borderRadius: 3,

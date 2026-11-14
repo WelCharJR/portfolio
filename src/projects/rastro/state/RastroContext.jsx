@@ -125,15 +125,28 @@ function reducer(state, action) {
     }
 
     case "RESOLVER_NC": {
+      const { id, responsavel, descricao } = action.payload;
+      if (!String(descricao || "").trim()) return state;
       const naoConformidades = state.naoConformidades.map((nc) =>
-        nc.id === action.payload.id ? { ...nc, status: nc.status === "aberta" ? "resolvida" : "aberta" } : nc
+        nc.id === id
+          ? { ...nc, status: "resolvida", resolucao: { responsavel, descricao: descricao.trim(), data: localDateISO() } }
+          : nc
+      );
+      return { ...state, naoConformidades };
+    }
+
+    case "REABRIR_NC": {
+      const naoConformidades = state.naoConformidades.map((nc) =>
+        nc.id === action.payload.id ? { ...nc, status: "aberta" } : nc
       );
       return { ...state, naoConformidades };
     }
 
     case "RENOVAR_FERRAMENTA": {
-      const ferramentas = state.ferramentas.map((f) =>
-        f.id === action.payload.id ? { ...f, dias: 90, venc: dateInDays(90) } : f
+      const { id, responsavel } = action.payload;
+      const ferramentas = state.ferramentas.map((f) => f.id === id
+        ? { ...f, dias: 90, venc: dateInDays(90), ultimaRenovacao: { responsavel, data: localDateISO() } }
+        : f
       );
       return { ...state, ferramentas };
     }

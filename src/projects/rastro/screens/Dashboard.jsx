@@ -80,6 +80,11 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
 
   const [modalAeronave, setModalAeronave] = useState(false);
   const [modalPonto, setModalPonto] = useState(false);
+  const [ferramentaParaRenovar, setFerramentaParaRenovar] = useState(null);
+  const [responsavelRenovacao, setResponsavelRenovacao] = useState("");
+  const [ncParaResolver, setNcParaResolver] = useState(null);
+  const [responsavelResolucao, setResponsavelResolucao] = useState("");
+  const [descricaoResolucao, setDescricaoResolucao] = useState("");
   const [novaSerie, setNovaSerie] = useState("");
   const [novaEstacao, setNovaEstacao] = useState("");
   const [novoLabel, setNovoLabel] = useState("");
@@ -95,6 +100,44 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
 
   function avisar(msg, tone) {
     if (notify) notify(msg, tone);
+  }
+
+  function fecharModalRenovacao() {
+    setFerramentaParaRenovar(null);
+    setResponsavelRenovacao("");
+  }
+
+  function fecharModalResolucao() {
+    setNcParaResolver(null);
+    setResponsavelResolucao("");
+    setDescricaoResolucao("");
+  }
+
+  function salvarRenovacao(e) {
+    e.preventDefault();
+    if (!ferramentaParaRenovar) return;
+    dispatch({
+      type: "RENOVAR_FERRAMENTA",
+      payload: { id: ferramentaParaRenovar.id, responsavel: responsavelRenovacao.trim() || operadorAtivo },
+    });
+    avisar(`Calibração de ${ferramentaParaRenovar.id} renovada`, "green");
+    fecharModalRenovacao();
+  }
+
+  function salvarResolucao(e) {
+    e.preventDefault();
+    const descricao = descricaoResolucao.trim();
+    if (!ncParaResolver || !descricao) return;
+    dispatch({
+      type: "RESOLVER_NC",
+      payload: {
+        id: ncParaResolver.id,
+        responsavel: responsavelResolucao.trim() || operadorAtivo,
+        descricao,
+      },
+    });
+    avisar(`${ncParaResolver.id} resolvida`, "green");
+    fecharModalResolucao();
   }
 
   function fecharModalAeronave() {
@@ -316,6 +359,39 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
             <button type="submit" className="primary-btn focus-ring" style={{ flex: 1 }}>
               Cadastrar
             </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={Boolean(ferramentaParaRenovar)} onClose={fecharModalRenovacao} title="Registrar renovação de calibração">
+        <form onSubmit={salvarRenovacao}>
+          <p style={{ color: "var(--text-dim)", fontSize: 13, margin: "0 0 14px" }}>
+            Ferramenta <span className="mono">{ferramentaParaRenovar?.id}</span> terá validade renovada por 90 dias.
+          </p>
+          <Field label="Quem fez a renovação? (opcional)">
+            <input className="field-input focus-ring" autoFocus value={responsavelRenovacao} onChange={(e) => setResponsavelRenovacao(e.target.value)} placeholder={`Em branco: ${operadorAtivo}`} />
+          </Field>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="ghost-btn focus-ring" onClick={fecharModalRenovacao} style={{ flex: 1 }}>Cancelar</button>
+            <button type="submit" className="primary-btn focus-ring" style={{ flex: 1 }}>Confirmar renovação</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={Boolean(ncParaResolver)} onClose={fecharModalResolucao} title="Registrar resolução da pendência">
+        <form onSubmit={salvarResolucao}>
+          <p style={{ color: "var(--text-dim)", fontSize: 13, margin: "0 0 14px" }}>
+            {ncParaResolver?.id}: {ncParaResolver?.desc}
+          </p>
+          <Field label="Quem resolveu? (opcional)">
+            <input className="field-input focus-ring" value={responsavelResolucao} onChange={(e) => setResponsavelResolucao(e.target.value)} placeholder={`Em branco: ${operadorAtivo}`} />
+          </Field>
+          <Field label="Como foi resolvida?">
+            <textarea className="field-input focus-ring" autoFocus required rows={3} value={descricaoResolucao} onChange={(e) => setDescricaoResolucao(e.target.value)} placeholder="Descreva a ação tomada" />
+          </Field>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="ghost-btn focus-ring" onClick={fecharModalResolucao} style={{ flex: 1 }}>Cancelar</button>
+            <button type="submit" className="primary-btn focus-ring" disabled={!descricaoResolucao.trim()} style={{ flex: 1 }}>Confirmar resolução</button>
           </div>
         </form>
       </Modal>
@@ -569,6 +645,12 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
                         <div>
                           <div className="mono" style={{ fontSize: 11, color: resolvida ? "var(--text-faint)" : "var(--red)" }}>{nc.id} · {nc.os}</div>
                           <div style={{ fontSize: 13.5, marginTop: 3, textDecoration: resolvida ? "line-through" : "none" }}>{nc.desc}</div>
+                          {nc.resolucao && (
+                            <div style={{ color: "var(--text-faint)", fontSize: 11.5, marginTop: 7 }}>
+                              Última resolução: {nc.resolucao.responsavel} · {nc.resolucao.data}
+                              <div style={{ color: "var(--text-dim)", marginTop: 2 }}>{nc.resolucao.descricao}</div>
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <span
@@ -589,7 +671,13 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
                           <motion.button
                             type="button"
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => dispatch({ type: "RESOLVER_NC", payload: { id: nc.id } })}
+                            onClick={() => {
+                              if (resolvida) {
+                                dispatch({ type: "REABRIR_NC", payload: { id: nc.id } });
+                              } else {
+                                setNcParaResolver(nc);
+                              }
+                            }}
                             className="ghost-btn focus-ring rastro-no-print"
                             style={{ padding: "6px 10px", fontSize: 11.5, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
                           >
@@ -624,6 +712,11 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
                     <div>
                       <div className="mono" style={{ fontSize: 12.5 }}>{f.id}</div>
                       <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 2 }}>{f.tipo}</div>
+                      {f.ultimaRenovacao && (
+                        <div style={{ color: "var(--text-faint)", fontSize: 11.5, marginTop: 7 }}>
+                          Última renovação: {f.ultimaRenovacao.responsavel} · {f.ultimaRenovacao.data}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       {(() => {
@@ -635,7 +728,7 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
                       <motion.button
                         type="button"
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => dispatch({ type: "RENOVAR_FERRAMENTA", payload: { id: f.id } })}
+                        onClick={() => setFerramentaParaRenovar(f)}
                         className="ghost-btn focus-ring rastro-no-print"
                         style={{ padding: "6px 10px", fontSize: 11.5 }}
                       >

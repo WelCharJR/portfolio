@@ -31,7 +31,7 @@ export default function App() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              <Dashboard onNovoRegistro={() => setTela("registro")} />
+              <Dashboard onNovoRegistro={() => setTela("registro")} notify={notify} />
             </motion.div>
           ) : (
             <motion.div

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Wrench, ScanLine, CheckCircle2, AlertTriangle, User, RotateCcw } from "lucide-react";
 import Select from "../components/Select.jsx";
-import { pontos, useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
+import { useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
 
 function Row({ k, v, vColor }) {
   return (
@@ -14,7 +14,7 @@ function Row({ k, v, vColor }) {
 }
 
 export default function RegistroOperacao({ onVoltar, notify }) {
-  const { aeronaves } = useRastroState();
+  const { aeronaves, pontos } = useRastroState();
   const dispatch = useRastroDispatch();
 
   const [aeronave, setAeronave] = useState(null);

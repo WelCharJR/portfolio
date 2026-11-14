@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users, Search, CheckCircle2, RotateCcw } from "lucide-react";
+import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users, Search, CheckCircle2, RotateCcw, PlusCircle, Plane, Crosshair } from "lucide-react";
 import StatusPill from "../components/StatusPill.jsx";
 import AeronaveCard from "../components/AeronaveCard.jsx";
 import OperacaoRow from "../components/OperacaoRow.jsx";
 import OperacoesHeader from "../components/OperacoesHeader.jsx";
 import OperadorCard from "../components/OperadorCard.jsx";
 import ProcessoCard from "../components/ProcessoCard.jsx";
+import Modal from "../components/Modal.jsx";
 import { useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
 
 const TABS = [
@@ -26,6 +27,17 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.18 } },
 };
 
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label className="mono" style={{ fontSize: 11, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 7 }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
 function SearchInput({ value, onChange, placeholder }) {
   return (
     <div style={{ position: "relative", maxWidth: 320, marginBottom: 14 }}>
@@ -41,15 +53,82 @@ function SearchInput({ value, onChange, placeholder }) {
   );
 }
 
-export default function Dashboard({ onNovoRegistro }) {
+export default function Dashboard({ onNovoRegistro, notify }) {
   const [tab, setTab] = useState("producao");
   const [buscaOperacoes, setBuscaOperacoes] = useState("");
   const [buscaNc, setBuscaNc] = useState("");
   const [buscaFerramentas, setBuscaFerramentas] = useState("");
   const [ncFiltro, setNcFiltro] = useState("aberta");
 
-  const { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos } = useRastroState();
+  const [modalAeronave, setModalAeronave] = useState(false);
+  const [modalPonto, setModalPonto] = useState(false);
+  const [novaSerie, setNovaSerie] = useState("");
+  const [novaEstacao, setNovaEstacao] = useState("");
+  const [novoLabel, setNovoLabel] = useState("");
+  const [novoMin, setNovoMin] = useState("");
+  const [novoMax, setNovoMax] = useState("");
+  const [erroForm, setErroForm] = useState("");
+
+  const { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos, pontos } = useRastroState();
   const dispatch = useRastroDispatch();
+
+  function avisar(msg, tone) {
+    if (notify) notify(msg, tone);
+  }
+
+  function fecharModalAeronave() {
+    setModalAeronave(false);
+    setNovaSerie("");
+    setNovaEstacao("");
+    setErroForm("");
+  }
+
+  function fecharModalPonto() {
+    setModalPonto(false);
+    setNovoLabel("");
+    setNovoMin("");
+    setNovoMax("");
+    setErroForm("");
+  }
+
+  function salvarAeronave(e) {
+    e.preventDefault();
+    const serie = novaSerie.trim();
+    const estacao = novaEstacao.trim();
+    if (!serie || !estacao) {
+      setErroForm("Preencha o número de série e a estação.");
+      return;
+    }
+    if (aeronaves.some((a) => a.serie === serie)) {
+      setErroForm("Já existe uma aeronave com esse número de série.");
+      return;
+    }
+    dispatch({ type: "CADASTRAR_AERONAVE", payload: { serie, estacao } });
+    avisar(`Aeronave ${serie} cadastrada`, "green");
+    fecharModalAeronave();
+  }
+
+  function salvarPonto(e) {
+    e.preventDefault();
+    const label = novoLabel.trim();
+    const min = parseFloat(novoMin.replace(",", "."));
+    const max = parseFloat(novoMax.replace(",", "."));
+    if (!label || isNaN(min) || isNaN(max)) {
+      setErroForm("Preencha a descrição e os dois valores de torque.");
+      return;
+    }
+    if (min >= max) {
+      setErroForm("O valor mínimo precisa ser menor que o máximo.");
+      return;
+    }
+    if (pontos.some((p) => p.label.toLowerCase() === label.toLowerCase())) {
+      setErroForm("Já existe um ponto de fixação com essa descrição.");
+      return;
+    }
+    dispatch({ type: "CADASTRAR_PONTO", payload: { label, min, max } });
+    avisar(`Ponto de fixação "${label}" cadastrado`, "green");
+    fecharModalPonto();
+  }
 
   const ncAbertas = useMemo(() => naoConformidades.filter((n) => n.status !== "resolvida"), [naoConformidades]);
 
@@ -102,6 +181,24 @@ export default function Dashboard({ onNovoRegistro }) {
           <StatusPill icon={Clock} label="CALIBRAÇÃO VENCENDO" value={ferramentas.length} tone="amber" />
           <motion.button
             type="button"
+            className="ghost-btn focus-ring"
+            onClick={() => setModalAeronave(true)}
+            whileTap={{ scale: 0.97 }}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px", fontSize: 13 }}
+          >
+            <Plane size={14} /> Nova aeronave
+          </motion.button>
+          <motion.button
+            type="button"
+            className="ghost-btn focus-ring"
+            onClick={() => setModalPonto(true)}
+            whileTap={{ scale: 0.97 }}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px", fontSize: 13 }}
+          >
+            <Crosshair size={14} /> Novo ponto
+          </motion.button>
+          <motion.button
+            type="button"
             className="primary-btn focus-ring"
             onClick={onNovoRegistro}
             whileTap={{ scale: 0.97 }}
@@ -111,6 +208,88 @@ export default function Dashboard({ onNovoRegistro }) {
           </motion.button>
         </div>
       </div>
+
+      <Modal open={modalAeronave} onClose={fecharModalAeronave} title="Cadastrar nova aeronave">
+        <form onSubmit={salvarAeronave}>
+          <Field label="Número de série">
+            <input
+              className="field-input focus-ring mono"
+              placeholder="ex.: E195-E2 · MSN 7736"
+              value={novaSerie}
+              onChange={(e) => setNovaSerie(e.target.value)}
+              autoFocus
+            />
+          </Field>
+          <Field label="Estação / etapa atual">
+            <input
+              className="field-input focus-ring"
+              placeholder="ex.: Montagem Final"
+              value={novaEstacao}
+              onChange={(e) => setNovaEstacao(e.target.value)}
+            />
+          </Field>
+          {erroForm && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--red)", fontSize: 12.5, marginBottom: 12 }}>
+              <AlertTriangle size={13} /> {erroForm}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <button type="button" className="ghost-btn focus-ring" onClick={fecharModalAeronave} style={{ flex: 1 }}>
+              Cancelar
+            </button>
+            <button type="submit" className="primary-btn focus-ring" style={{ flex: 1 }}>
+              Cadastrar
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={modalPonto} onClose={fecharModalPonto} title="Cadastrar novo ponto de fixação">
+        <form onSubmit={salvarPonto}>
+          <Field label="Descrição do ponto">
+            <input
+              className="field-input focus-ring"
+              placeholder="ex.: Longarina EF — P.15C"
+              value={novoLabel}
+              onChange={(e) => setNovoLabel(e.target.value)}
+              autoFocus
+            />
+          </Field>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Field label="Mínimo (Nm)">
+              <input
+                className="field-input focus-ring mono"
+                inputMode="decimal"
+                placeholder="0.0"
+                value={novoMin}
+                onChange={(e) => setNovoMin(e.target.value)}
+              />
+            </Field>
+            <Field label="Máximo (Nm)">
+              <input
+                className="field-input focus-ring mono"
+                inputMode="decimal"
+                placeholder="0.0"
+                value={novoMax}
+                onChange={(e) => setNovoMax(e.target.value)}
+              />
+            </Field>
+          </div>
+          {erroForm && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--red)", fontSize: 12.5, marginBottom: 12 }}>
+              <AlertTriangle size={13} /> {erroForm}
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            <button type="button" className="ghost-btn focus-ring" onClick={fecharModalPonto} style={{ flex: 1 }}>
+              Cancelar
+            </button>
+            <button type="submit" className="primary-btn focus-ring" style={{ flex: 1 }}>
+              Cadastrar
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--line)", position: "relative" }}>

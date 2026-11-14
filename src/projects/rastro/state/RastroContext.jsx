@@ -6,18 +6,12 @@ import {
   processos as seedProcessos,
   naoConformidades as seedNaoConformidades,
   ferramentas as seedFerramentas,
-  pontos,
+  pontos as seedPontos,
 } from "../data/mockData.js";
 
 const STORAGE_KEY = "rastro-state-v1";
 
-function loadInitialState() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    // localStorage indisponível ou corrompido — segue com os dados de exemplo
-  }
+function seed() {
   return {
     aeronaves: seedAeronaves,
     operacoes: seedOperacoes,
@@ -25,7 +19,22 @@ function loadInitialState() {
     processos: seedProcessos,
     naoConformidades: seedNaoConformidades,
     ferramentas: seedFerramentas,
+    pontos: seedPontos,
   };
+}
+
+function loadInitialState() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // garante compatibilidade com estado salvo antes de "pontos" existir aqui
+      return { ...seed(), ...parsed, pontos: parsed.pontos || seedPontos };
+    }
+  } catch {
+    // localStorage indisponível ou corrompido — segue com os dados de exemplo
+  }
+  return seed();
 }
 
 function nowHHMM() {
@@ -113,20 +122,25 @@ function reducer(state, action) {
       return { ...state, ferramentas };
     }
 
+    case "CADASTRAR_AERONAVE": {
+      const { serie, estacao } = action.payload;
+      const nova = { serie, estacao, progresso: 0, status: "ok" };
+      return { ...state, aeronaves: [...state.aeronaves, nova] };
+    }
+
+    case "CADASTRAR_PONTO": {
+      const { label, min, max } = action.payload;
+      const novo = { id: `p-${Date.now()}`, label, min, max };
+      return { ...state, pontos: [...state.pontos, novo] };
+    }
+
     case "RESET": {
       try {
         window.localStorage.removeItem(STORAGE_KEY);
       } catch {
         // ignore
       }
-      return {
-        aeronaves: seedAeronaves,
-        operacoes: seedOperacoes,
-        operadores: seedOperadores,
-        processos: seedProcessos,
-        naoConformidades: seedNaoConformidades,
-        ferramentas: seedFerramentas,
-      };
+      return seed();
     }
 
     default:
@@ -166,5 +180,3 @@ export function useRastroDispatch() {
   if (!ctx) throw new Error("useRastroDispatch precisa estar dentro de <RastroProvider>");
   return ctx;
 }
-
-export { pontos };

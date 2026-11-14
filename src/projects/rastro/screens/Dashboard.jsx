@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users, Search, CheckCircle2, RotateCcw, Plane, Crosshair, Download, Printer, LogOut, UserRound } from "lucide-react";
 import StatusPill from "../components/StatusPill.jsx";
@@ -12,8 +12,11 @@ import { useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
 import { daysUntil } from "../utils/dates.js";
 import { exportCsv } from "../utils/exportCsv.js";
 
+const AeronaveMapa3D = lazy(() => import("../components/AeronaveMapa3D.jsx"));
+
 const TABS = [
   { id: "producao", label: "Produção" },
+  { id: "mapa-3d", label: "Mapa 3D" },
   { id: "operacoes", label: "Registro de operações" },
   { id: "horas", label: "Horas" },
   { id: "nc", label: "Não conformidades" },
@@ -515,6 +518,8 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
             </div>
           )}
 
+          {tab === "mapa-3d" && <Suspense fallback={<div style={{ color: "var(--text-dim)", padding: 18 }}>Carregando mapa 3D…</div>}><AeronaveMapa3D operadorAtivo={operadorAtivo} /></Suspense>}
+
           {tab === "operacoes" && (
             <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
@@ -748,3 +753,4 @@ export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSai
     </div>
   );
 }
+

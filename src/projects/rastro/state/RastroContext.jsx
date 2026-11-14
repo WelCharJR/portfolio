@@ -21,6 +21,7 @@ function seed() {
     naoConformidades: seedNaoConformidades,
     ferramentas: seedFerramentas,
     pontos: seedPontos,
+    atividades: [],
   };
 }
 
@@ -30,7 +31,12 @@ function loadInitialState() {
     if (raw) {
       const parsed = JSON.parse(raw);
       // garante compatibilidade com estado salvo antes de "pontos" existir aqui
-      const restored = { ...seed(), ...parsed, pontos: parsed.pontos || seedPontos };
+      const restored = {
+        ...seed(),
+        ...parsed,
+        pontos: parsed.pontos || seedPontos,
+        atividades: Array.isArray(parsed.atividades) ? parsed.atividades : [],
+      };
       return {
         ...restored,
         operacoes: restored.operacoes.map((operacao) => ({
@@ -124,6 +130,37 @@ function reducer(state, action) {
       return { ...state, operacoes, aeronaves, operadores, processos, naoConformidades, _ultimoRegistro: { ok, novaNC } };
     }
 
+    case "INICIAR_ATIVIDADE": {
+      const { aeronaveSerie, zonaId, operador } = action.payload;
+      if (state.atividades.some((atividade) =>
+        atividade.aeronaveSerie === aeronaveSerie && atividade.zonaId === zonaId && !atividade.encerradaEm
+      )) return state;
+
+      const id = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const atividade = {
+        id,
+        aeronaveSerie,
+        zonaId,
+        operador,
+        iniciadaEm: new Date().toISOString(),
+        encerradaEm: null,
+      };
+      return { ...state, atividades: [atividade, ...state.atividades] };
+    }
+
+    case "ENCERRAR_ATIVIDADE": {
+      const { id } = action.payload;
+      const atividadeAtiva = state.atividades.some((atividade) => atividade.id === id && !atividade.encerradaEm);
+      if (!atividadeAtiva) return state;
+      return {
+        ...state,
+        atividades: state.atividades.map((atividade) => atividade.id === id && !atividade.encerradaEm
+          ? { ...atividade, encerradaEm: new Date().toISOString() }
+          : atividade
+        ),
+      };
+    }
+
     case "RESOLVER_NC": {
       const { id, responsavel, descricao } = action.payload;
       if (!String(descricao || "").trim()) return state;
@@ -209,3 +246,4 @@ export function useRastroDispatch() {
   if (!ctx) throw new Error("useRastroDispatch precisa estar dentro de <RastroProvider>");
   return ctx;
 }
+

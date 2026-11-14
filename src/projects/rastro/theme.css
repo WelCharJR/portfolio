@@ -158,3 +158,15 @@
     transition: none;
   }
 }
+
+@media print {
+  @page { margin: 12mm; }
+  .rastro-no-print { display: none !important; }
+  .rastro-root { background: #fff !important; color: #111 !important; min-height: auto; }
+  .rastro-root .tag,
+  .rastro-root [style*="background: var(--panel)"] { background: #fff !important; color: #111 !important; box-shadow: none !important; }
+  .rastro-root .mono,
+  .rastro-root span,
+  .rastro-root div { color: #111 !important; }
+  .rastro-root svg { display: none !important; }
+}

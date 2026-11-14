@@ -1,3 +1,5 @@
+import { dateInDays, localDateISO } from "../utils/dates.js";
+
 export const aeronaves = [
   { serie: "E195-E2 · MSN 7734", estacao: "Junção de Asa — Bay 4", progresso: 78, status: "ok" },
   { serie: "E195-E2 · MSN 7735", estacao: "Fuselagem Central", progresso: 34, status: "atencao" },
@@ -13,10 +15,10 @@ export const pontos = [
 ];
 
 export const operacoes = [
-  { ponto: "Longarina EF — P.12A", spec: "25.0–30.0", aplicado: "27.4", ferramenta: "CD-0231", operador: "M. Andrade", hora: "14:02", horas: 1.5, op: "OP-4821", ok: true },
-  { ponto: "Nervura 6 — P.03B", spec: "18.0–22.0", aplicado: "23.6", ferramenta: "CD-0114", operador: "R. Nolasco", hora: "13:47", horas: 0.5, op: "OP-4821", ok: false },
-  { ponto: "Skin Panel — P.44", spec: "12.0–15.0", aplicado: "13.2", ferramenta: "CD-0231", operador: "M. Andrade", hora: "13:31", horas: 2.0, op: "OP-4790", ok: true },
-  { ponto: "Trem de Pouso — P.02", spec: "80.0–95.0", aplicado: "88.0", ferramenta: "CD-0087", operador: "W. Camargo", hora: "13:15", horas: 1.0, op: "OP-4790", ok: true },
+  { ponto: "Longarina EF — P.12A", spec: "25.0–30.0", aplicado: "27.4", ferramenta: "CD-0231", operador: "M. Andrade", hora: "14:02", data: localDateISO(), aeronaveSerie: "E195-E2 · MSN 7734", horas: 1.5, op: "OP-4821", ok: true },
+  { ponto: "Nervura 6 — P.03B", spec: "18.0–22.0", aplicado: "23.6", ferramenta: "CD-0114", operador: "R. Nolasco", hora: "13:47", data: localDateISO(), aeronaveSerie: "E195-E2 · MSN 7734", horas: 0.5, op: "OP-4821", ok: false },
+  { ponto: "Skin Panel — P.44", spec: "12.0–15.0", aplicado: "13.2", ferramenta: "CD-0231", operador: "M. Andrade", hora: "13:31", data: localDateISO(), aeronaveSerie: "E195-E2 · MSN 7735", horas: 2.0, op: "OP-4790", ok: true },
+  { ponto: "Trem de Pouso — P.02", spec: "80.0–95.0", aplicado: "88.0", ferramenta: "CD-0087", operador: "W. Camargo", hora: "13:15", data: localDateISO(), aeronaveSerie: "E195-E2 · MSN 7735", horas: 1.0, op: "OP-4790", ok: true },
 ];
 
 export const operadores = [
@@ -38,6 +40,6 @@ export const naoConformidades = [
 ];
 
 export const ferramentas = [
-  { id: "CD-0114", tipo: "Chave dinamométrica 5–25 Nm", venc: "22/07/2026", dias: 2 },
-  { id: "CD-0356", tipo: "Chave dinamométrica 20–100 Nm", venc: "25/07/2026", dias: 5 },
+  { id: "CD-0114", tipo: "Chave dinamométrica 5–25 Nm", venc: dateInDays(2), dias: 2 },
+  { id: "CD-0356", tipo: "Chave dinamométrica 20–100 Nm", venc: dateInDays(5), dias: 5 },
 ];

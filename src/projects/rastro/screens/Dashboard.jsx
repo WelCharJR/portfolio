@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users, Search, CheckCircle2, RotateCcw, PlusCircle, Plane, Crosshair } from "lucide-react";
+import { Wrench, AlertTriangle, ShieldAlert, Gauge, Clock, ChevronRight, ClipboardPlus, Users, Search, CheckCircle2, RotateCcw, Plane, Crosshair, Download, Printer, LogOut, UserRound } from "lucide-react";
 import StatusPill from "../components/StatusPill.jsx";
 import AeronaveCard from "../components/AeronaveCard.jsx";
 import OperacaoRow from "../components/OperacaoRow.jsx";
@@ -9,6 +9,8 @@ import OperadorCard from "../components/OperadorCard.jsx";
 import ProcessoCard from "../components/ProcessoCard.jsx";
 import Modal from "../components/Modal.jsx";
 import { useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
+import { daysUntil } from "../utils/dates.js";
+import { exportCsv } from "../utils/exportCsv.js";
 
 const TABS = [
   { id: "producao", label: "Produção" },
@@ -40,7 +42,7 @@ function Field({ label, children }) {
 
 function SearchInput({ value, onChange, placeholder }) {
   return (
-    <div style={{ position: "relative", maxWidth: 320, marginBottom: 14 }}>
+    <div className="rastro-no-print" style={{ position: "relative", maxWidth: 320, marginBottom: 14 }}>
       <Search size={14} color="var(--text-faint)" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
       <input
         className="field-input focus-ring mono"
@@ -53,12 +55,28 @@ function SearchInput({ value, onChange, placeholder }) {
   );
 }
 
-export default function Dashboard({ onNovoRegistro, notify }) {
+function ReportActions({ onExport, onPrint }) {
+  return (
+    <div className="rastro-no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <button type="button" className="ghost-btn focus-ring" onClick={onExport} style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 11px", fontSize: 12 }}>
+        <Download size={14} /> Exportar CSV
+      </button>
+      <button type="button" className="ghost-btn focus-ring" onClick={onPrint} style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 11px", fontSize: 12 }}>
+        <Printer size={14} /> Imprimir / salvar PDF
+      </button>
+    </div>
+  );
+}
+
+export default function Dashboard({ onNovoRegistro, notify, operadorAtivo, onSair }) {
   const [tab, setTab] = useState("producao");
   const [buscaOperacoes, setBuscaOperacoes] = useState("");
   const [buscaNc, setBuscaNc] = useState("");
   const [buscaFerramentas, setBuscaFerramentas] = useState("");
   const [ncFiltro, setNcFiltro] = useState("aberta");
+  const [aeronaveFiltro, setAeronaveFiltro] = useState("");
+  const [dataInicial, setDataInicial] = useState("");
+  const [dataFinal, setDataFinal] = useState("");
 
   const [modalAeronave, setModalAeronave] = useState(false);
   const [modalPonto, setModalPonto] = useState(false);
@@ -71,6 +89,9 @@ export default function Dashboard({ onNovoRegistro, notify }) {
 
   const { aeronaves, operacoes, naoConformidades, ferramentas, operadores, processos, pontos } = useRastroState();
   const dispatch = useRastroDispatch();
+  const ferramentasAlerta = useMemo(() => ferramentas
+    .map((f) => ({ ...f, diasRestantes: daysUntil(f.venc) }))
+    .filter((f) => f.diasRestantes === null || f.diasRestantes <= 14), [ferramentas]);
 
   function avisar(msg, tone) {
     if (notify) notify(msg, tone);
@@ -134,11 +155,13 @@ export default function Dashboard({ onNovoRegistro, notify }) {
 
   const operacoesFiltradas = useMemo(() => {
     const q = buscaOperacoes.trim().toLowerCase();
-    if (!q) return operacoes;
-    return operacoes.filter((op) =>
-      [op.ponto, op.ferramenta, op.operador, op.op].join(" ").toLowerCase().includes(q)
-    );
-  }, [operacoes, buscaOperacoes]);
+    return operacoes.filter((op) => {
+      const correspondeBusca = !q || [op.ponto, op.ferramenta, op.operador, op.op, op.aeronaveSerie].join(" ").toLowerCase().includes(q);
+      const correspondeAeronave = !aeronaveFiltro || op.aeronaveSerie === aeronaveFiltro;
+      const correspondeData = (!dataInicial || (op.data && op.data >= dataInicial)) && (!dataFinal || (op.data && op.data <= dataFinal));
+      return correspondeBusca && correspondeAeronave && correspondeData;
+    });
+  }, [operacoes, buscaOperacoes, aeronaveFiltro, dataInicial, dataFinal]);
 
   const ncFiltradas = useMemo(() => {
     const q = buscaNc.trim().toLowerCase();
@@ -178,10 +201,10 @@ export default function Dashboard({ onNovoRegistro, notify }) {
           <motion.div key={`nc-${ncAbertas.length}`} initial={{ scale: 1.15 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 15 }}>
             <StatusPill icon={ShieldAlert} label="NC ABERTAS" value={ncAbertas.length} tone="red" />
           </motion.div>
-          <StatusPill icon={Clock} label="CALIBRAÇÃO VENCENDO" value={ferramentas.length} tone="amber" />
+          <StatusPill icon={Clock} label="CALIBRAÇÃO ATÉ 14 DIAS" value={ferramentasAlerta.length} tone={ferramentasAlerta.some((f) => f.diasRestantes < 0) ? "red" : "amber"} />
           <motion.button
             type="button"
-            className="ghost-btn focus-ring"
+            className="ghost-btn focus-ring rastro-no-print"
             onClick={() => setModalAeronave(true)}
             whileTap={{ scale: 0.97 }}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px", fontSize: 13 }}
@@ -190,7 +213,7 @@ export default function Dashboard({ onNovoRegistro, notify }) {
           </motion.button>
           <motion.button
             type="button"
-            className="ghost-btn focus-ring"
+            className="ghost-btn focus-ring rastro-no-print"
             onClick={() => setModalPonto(true)}
             whileTap={{ scale: 0.97 }}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px", fontSize: 13 }}
@@ -199,13 +222,19 @@ export default function Dashboard({ onNovoRegistro, notify }) {
           </motion.button>
           <motion.button
             type="button"
-            className="primary-btn focus-ring"
+            className="primary-btn focus-ring rastro-no-print"
             onClick={onNovoRegistro}
             whileTap={{ scale: 0.97 }}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 14px" }}
           >
             <ClipboardPlus size={15} /> Registrar operação
           </motion.button>
+        </div>
+        <div className="rastro-no-print" style={{ display: "flex", alignItems: "center", gap: 9, color: "var(--text-dim)", fontSize: 12, marginTop: 12 }}>
+          <UserRound size={14} color="var(--amber)" /> Perfil demo: {operadorAtivo}
+          <button type="button" className="ghost-btn focus-ring" onClick={onSair} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 9px", fontSize: 11.5 }}>
+            <LogOut size={13} /> Trocar perfil
+          </button>
         </div>
       </div>
 
@@ -292,7 +321,7 @@ export default function Dashboard({ onNovoRegistro, notify }) {
       </Modal>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--line)", position: "relative" }}>
+      <div className="rastro-no-print" style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "1px solid var(--line)", position: "relative" }}>
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -324,6 +353,7 @@ export default function Dashboard({ onNovoRegistro, notify }) {
 
       {/* Aircraft grid — always visible as primary context */}
       <motion.div
+        className="rastro-no-print"
         variants={listVariants}
         initial="hidden"
         animate="show"
@@ -395,12 +425,15 @@ export default function Dashboard({ onNovoRegistro, notify }) {
                     <Clock size={15} color="var(--amber)" />
                     <span className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>Calibração vencendo</span>
                   </div>
-                  {ferramentas.map((f) => (
+                  {ferramentasAlerta.map((f) => (
                     <div key={f.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid #5c4611" }}>
                       <span className="mono" style={{ fontSize: 12, color: "var(--text)" }}>{f.id}</span>
-                      <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>{f.dias}d — {f.venc}</span>
+                      <span className="mono" style={{ fontSize: 12, color: f.diasRestantes < 0 ? "var(--red)" : "var(--amber)" }}>
+                        {f.diasRestantes === null ? "validade não informada" : f.diasRestantes < 0 ? `vencida há ${Math.abs(f.diasRestantes)}d` : f.diasRestantes === 0 ? "vence hoje" : `vence em ${f.diasRestantes}d`} — {f.venc || "—"}
+                      </span>
                     </div>
                   ))}
+                  {ferramentasAlerta.length === 0 && <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Nenhuma calibração próxima do vencimento.</div>}
                 </div>
               </div>
             </div>
@@ -408,9 +441,32 @@ export default function Dashboard({ onNovoRegistro, notify }) {
 
           {tab === "operacoes" && (
             <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 5, padding: 18 }}>
-              <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Registro completo de operações</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Histórico de operações por aeronave</span>
+                <ReportActions
+                  onExport={() => exportCsv("rastro-operacoes.csv", ["aeronave", "data", "hora", "ponto", "especificado", "aplicado", "ferramenta", "operador", "ordem", "horas", "resultado"], operacoesFiltradas.map((op) => [op.aeronaveSerie || "Não informada", op.data || "Não informada", op.hora, op.ponto, op.spec, op.aplicado, op.ferramenta, op.operador, op.op, op.horas, op.ok ? "Conforme" : "Não conforme"]))}
+                  onPrint={() => window.print()}
+                />
+              </div>
               <div style={{ marginTop: 10 }}>
                 <SearchInput value={buscaOperacoes} onChange={setBuscaOperacoes} placeholder="buscar por ponto, ferramenta, operador ou OP..." />
+                <div className="rastro-no-print" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end", marginBottom: 14 }}>
+                  <label style={{ display: "grid", gap: 6, color: "var(--text-faint)", fontSize: 11 }}>
+                    AERONAVE
+                    <select className="field-input focus-ring" value={aeronaveFiltro} onChange={(e) => setAeronaveFiltro(e.target.value)} style={{ minWidth: 220, padding: "9px 10px", fontSize: 12 }}>
+                      <option value="">Todas as aeronaves</option>
+                      {aeronaves.map((a) => <option key={a.serie} value={a.serie}>{a.serie}</option>)}
+                    </select>
+                  </label>
+                  <label style={{ display: "grid", gap: 6, color: "var(--text-faint)", fontSize: 11 }}>
+                    DE
+                    <input className="field-input focus-ring mono" type="date" value={dataInicial} onChange={(e) => setDataInicial(e.target.value)} style={{ padding: "8px 10px", fontSize: 12 }} />
+                  </label>
+                  <label style={{ display: "grid", gap: 6, color: "var(--text-faint)", fontSize: 11 }}>
+                    ATÉ
+                    <input className="field-input focus-ring mono" type="date" value={dataFinal} onChange={(e) => setDataFinal(e.target.value)} style={{ padding: "8px 10px", fontSize: 12 }} />
+                  </label>
+                </div>
                 <OperacoesHeader />
                 <motion.div variants={listVariants} initial="hidden" animate="show">
                   <AnimatePresence initial={false}>
@@ -462,7 +518,14 @@ export default function Dashboard({ onNovoRegistro, notify }) {
 
           {tab === "nc" && (
             <div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                <span className="display" style={{ fontSize: 14, fontWeight: 600 }}>Relatório de não conformidades</span>
+                <ReportActions
+                  onExport={() => exportCsv("rastro-nao-conformidades.csv", ["id", "ordem", "descricao", "severidade", "status", "data", "hora"], ncFiltradas.map((nc) => [nc.id, nc.os, nc.desc, nc.sev, nc.status || "aberta", nc.data || "Não informada", nc.criadaEm || "Não informada"]))}
+                  onPrint={() => window.print()}
+                />
+              </div>
+              <div className="rastro-no-print" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 4 }}>
                 <SearchInput value={buscaNc} onChange={setBuscaNc} placeholder="buscar por id, descrição ou OS..." />
                 <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
                   {[
@@ -527,7 +590,7 @@ export default function Dashboard({ onNovoRegistro, notify }) {
                             type="button"
                             whileTap={{ scale: 0.95 }}
                             onClick={() => dispatch({ type: "RESOLVER_NC", payload: { id: nc.id } })}
-                            className="ghost-btn focus-ring"
+                            className="ghost-btn focus-ring rastro-no-print"
                             style={{ padding: "6px 10px", fontSize: 11.5, display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}
                           >
                             {resolvida ? <RotateCcw size={12} /> : <CheckCircle2 size={12} />}
@@ -563,12 +626,17 @@ export default function Dashboard({ onNovoRegistro, notify }) {
                       <div style={{ fontSize: 12.5, color: "var(--text-dim)", marginTop: 2 }}>{f.tipo}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className="mono" style={{ fontSize: 12, color: "var(--amber)" }}>vence em {f.dias}d</span>
+                      {(() => {
+                        const dias = daysUntil(f.venc);
+                        const cor = dias === null ? "var(--text-faint)" : dias < 0 ? "var(--red)" : dias <= 14 ? "var(--amber)" : "var(--green)";
+                        const label = dias === null ? "validade não informada" : dias < 0 ? `vencida há ${Math.abs(dias)}d` : dias === 0 ? "vence hoje" : `vence em ${dias}d`;
+                        return <span className="mono" style={{ fontSize: 12, color: cor }}>{label} · {f.venc}</span>;
+                      })()}
                       <motion.button
                         type="button"
                         whileTap={{ scale: 0.95 }}
                         onClick={() => dispatch({ type: "RENOVAR_FERRAMENTA", payload: { id: f.id } })}
-                        className="ghost-btn focus-ring"
+                        className="ghost-btn focus-ring rastro-no-print"
                         style={{ padding: "6px 10px", fontSize: 11.5 }}
                       >
                         renovar calibração

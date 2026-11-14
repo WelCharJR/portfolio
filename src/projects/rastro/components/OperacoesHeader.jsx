@@ -15,7 +15,7 @@ export default function OperacoesHeader() {
         letterSpacing: "0.05em",
       }}
     >
-      <span>ponto</span>
+      <span>ponto · aeronave · data</span>
       <span>especificado</span>
       <span>aplicado</span>
       <span>ferramenta</span>

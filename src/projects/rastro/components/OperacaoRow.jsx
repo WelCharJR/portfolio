@@ -15,7 +15,12 @@ export default function OperacaoRow({ operacao }) {
         alignItems: "center",
       }}
     >
-      <span style={{ color: "var(--text)" }}>{operacao.ponto}</span>
+      <span style={{ color: "var(--text)" }}>
+        <span style={{ display: "block" }}>{operacao.ponto}</span>
+        <span style={{ display: "block", color: "var(--text-faint)", fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 10.5, marginTop: 3 }}>
+          {operacao.aeronaveSerie || "Aeronave não informada"} · {operacao.data ? operacao.data.split("-").reverse().join("/") : "data não informada"}
+        </span>
+      </span>
       <span style={{ color: "var(--text-dim)" }}>{operacao.spec} Nm</span>
       <span style={{ color: operacao.ok ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
         {operacao.aplicado} Nm

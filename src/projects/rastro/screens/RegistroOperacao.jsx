@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Wrench, ScanLine, CheckCircle2, AlertTriangle, User, RotateCcw } from "lucide-react";
 import Select from "../components/Select.jsx";
+import CameraScanner from "../components/CameraScanner.jsx";
 import { useRastroState, useRastroDispatch } from "../state/RastroContext.jsx";
 
 function Row({ k, v, vColor }) {
@@ -13,14 +14,15 @@ function Row({ k, v, vColor }) {
   );
 }
 
-export default function RegistroOperacao({ onVoltar, notify }) {
+export default function RegistroOperacao({ onVoltar, notify, operadorAtivo }) {
   const { aeronaves, pontos } = useRastroState();
   const dispatch = useRastroDispatch();
 
   const [aeronave, setAeronave] = useState(null);
   const [ponto, setPonto] = useState(null);
   const [ferramenta, setFerramenta] = useState("");
-  const [operador, setOperador] = useState("");
+  const operador = operadorAtivo;
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [valor, setValor] = useState("");
   const [salvo, setSalvo] = useState(false);
 
@@ -31,6 +33,12 @@ export default function RegistroOperacao({ onVoltar, notify }) {
   }, [ponto, valor, numero]);
 
   const pronto = aeronave && ponto && ferramenta && operador && valor && !salvo;
+
+  const receberCodigo = useCallback((codigo) => {
+    setFerramenta(codigo);
+    setScannerOpen(false);
+    if (notify) notify(`Ferramenta ${codigo} identificada`, "green");
+  }, [notify]);
 
   function registrar() {
     if (!pronto) return;
@@ -130,7 +138,7 @@ export default function RegistroOperacao({ onVoltar, notify }) {
                 value={ferramenta}
                 onChange={(e) => setFerramenta(e.target.value)}
               />
-              <button type="button" className="ghost-btn focus-ring" style={{ padding: "0 16px", display: "flex", alignItems: "center" }} aria-label="Escanear código da ferramenta">
+              <button type="button" className="ghost-btn focus-ring" onClick={() => setScannerOpen(true)} style={{ padding: "0 16px", display: "flex", alignItems: "center" }} aria-label="Escanear código da ferramenta">
                 <ScanLine size={18} />
               </button>
             </div>
@@ -140,15 +148,8 @@ export default function RegistroOperacao({ onVoltar, notify }) {
             <label className="mono" style={{ fontSize: 11, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 7 }}>
               Operador
             </label>
-            <div style={{ position: "relative" }}>
-              <User size={16} color="var(--text-faint)" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
-              <input
-                className="field-input focus-ring"
-                style={{ paddingLeft: 40 }}
-                placeholder="matrícula do operador"
-                value={operador}
-                onChange={(e) => setOperador(e.target.value)}
-              />
+            <div className="field-input" style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text)" }}>
+              <User size={16} color="var(--amber)" /> {operadorAtivo}
             </div>
           </div>
 
@@ -241,6 +242,7 @@ export default function RegistroOperacao({ onVoltar, notify }) {
           </div>
         </motion.div>
       )}
+      <CameraScanner open={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={receberCodigo} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   ferramentas as seedFerramentas,
   pontos as seedPontos,
 } from "../data/mockData.js";
+import { dateInDays, localDateISO } from "../utils/dates.js";
 
 const STORAGE_KEY = "rastro-state-v1";
 
@@ -29,7 +30,19 @@ function loadInitialState() {
     if (raw) {
       const parsed = JSON.parse(raw);
       // garante compatibilidade com estado salvo antes de "pontos" existir aqui
-      return { ...seed(), ...parsed, pontos: parsed.pontos || seedPontos };
+      const restored = { ...seed(), ...parsed, pontos: parsed.pontos || seedPontos };
+      return {
+        ...restored,
+        operacoes: restored.operacoes.map((operacao) => ({
+          ...operacao,
+          aeronaveSerie: operacao.aeronaveSerie || null,
+          data: operacao.data || null,
+        })),
+        ferramentas: restored.ferramentas.map((ferramenta) => ({
+          ...ferramenta,
+          venc: ferramenta.venc === "renovada" ? dateInDays(90) : ferramenta.venc,
+        })),
+      };
     }
   } catch {
     // localStorage indisponível ou corrompido — segue com os dados de exemplo
@@ -59,6 +72,8 @@ function reducer(state, action) {
         ponto: ponto.label,
         spec: `${ponto.min.toFixed(1)}–${ponto.max.toFixed(1)}`,
         aplicado: String(valor).replace(",", "."),
+        aeronaveSerie,
+        data: localDateISO(),
         ferramenta,
         operador,
         hora: nowHHMM(),
@@ -100,6 +115,7 @@ function reducer(state, action) {
           sev: Math.abs(numero - (numero < ponto.min ? ponto.min : ponto.max)) > (ponto.max - ponto.min) * 0.3 ? "alta" : "media",
           os: `OS-${String(Math.floor(10000 + Math.random() * 90000))}`,
           status: "aberta",
+          data: localDateISO(),
           criadaEm: nowHHMM(),
         };
         naoConformidades = [novaNC, ...state.naoConformidades];
@@ -117,7 +133,7 @@ function reducer(state, action) {
 
     case "RENOVAR_FERRAMENTA": {
       const ferramentas = state.ferramentas.map((f) =>
-        f.id === action.payload.id ? { ...f, dias: 90, venc: "renovada" } : f
+        f.id === action.payload.id ? { ...f, dias: 90, venc: dateInDays(90) } : f
       );
       return { ...state, ferramentas };
     }

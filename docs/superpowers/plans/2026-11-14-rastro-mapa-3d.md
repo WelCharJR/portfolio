@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add a schematic, interactive 3D aircraft map to Rastro that links aircraft zones to completed operations and manually tracked active work.
+**Goal:** Add a schematic, interactive 3D aircraft map to Rastro that highlights aircraft surfaces and links selectable parts to manually tracked active work.
 
-**Architecture:** Store active and completed zone activity sessions in the existing local Rastro reducer and persistence. Add an isolated Three.js viewer that loads a local GLB, displays clickable approximate zone markers, and renders a React details panel; integrate it as a Dashboard tab.
+**Architecture:** Store active and completed zone activity sessions in the existing local Rastro reducer and persistence. Add an isolated Three.js viewer that loads a local GLB, highlights selectable aircraft surfaces, and renders a React details panel; integrate it as a Dashboard tab.
 
 **Tech Stack:** React 18, Three.js GLTFLoader and OrbitControls, Vite, existing localStorage reducer.
 
@@ -12,7 +12,8 @@
 
 ## Global Constraints
 
-- The map is a schematic demo and must label approximate locations.
+- The map is a schematic demo and must label the approximate wing surface.
+- Selecting the wing offers flaps, ailerons, and spoilers as separate operation areas.
 - Active work is started and ended manually, using the active demo operator.
 - Allow at most one active session per aircraft and zone.
 - Activity sessions stay separate from completed torque records.
@@ -53,10 +54,10 @@
 
 **Interfaces:**
 - Consumes: `aeronaves`, `pontos`, `operacoes`, `atividades`, `operadorAtivo`, and reducer dispatch.
-- Produces: an interactive map tab with aircraft and zone selectors, schematic markers, active-session controls, and filtered completed operation history.
+- Produces: an interactive map tab with aircraft and part selectors, surface highlights, active-session controls, and filtered completed operation history.
 
 - [x] Add Three.js as a runtime dependency and place the approved GLB in `public/models/rastro/`.
-- [x] Create a viewer component that loads the model with GLTFLoader, adds approximate wing and landing-gear markers, and supports orbit and zoom.
+- [x] Create a viewer component that loads the model with GLTFLoader, highlights the approximate wing area and actual named part meshes, and supports orbit and zoom.
 - [x] Dispose renderer, controls, and event listeners when the viewer unmounts.
 - [x] Map existing point labels to wing or landing-gear zones and filter history by aircraft and zone.
 - [x] Show the active operator and start time for active sessions; enable start/end with the current demo operator and keep completed sessions in history.

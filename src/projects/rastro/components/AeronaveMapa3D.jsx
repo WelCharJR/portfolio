@@ -5,8 +5,17 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { useRastroDispatch, useRastroState } from "../state/RastroContext.jsx";
 
 const ZONAS = [
-  { id: "asa", nome: "Asa", pontos: /longarina|nervura|skin panel/i, posicao: [-9, 3.5, -4] },
-  { id: "trem-pouso", nome: "Trem de pouso", pontos: /trem de pouso/i, posicao: [0, 1, 8] },
+  {
+    id: "asa",
+    nome: "Asa",
+    pontos: /longarina|nervura|skin panel/i,
+    partes: [
+      { id: "asa:flaps", nome: "Flaps", mesh: /^flap-/ },
+      { id: "asa:aileron", nome: "Ailerons", mesh: /^aileron-/ },
+      { id: "asa:spoilers", nome: "Spoilers", mesh: /^spoiler-/ },
+    ],
+  },
+  { id: "trem-pouso", nome: "Trem de pouso", pontos: /trem de pouso/i, mesh: /^gear-/ },
 ];
 
 const panelStyle = {
@@ -26,6 +35,12 @@ function formatarOperacaoDate(operacao) {
   return [operacao.data, operacao.hora].filter(Boolean).join(" · ") || "data não informada";
 }
 
+function activeIdsForAeronave(atividades, aeronaveSerie) {
+  return new Set(atividades
+    .filter((atividade) => atividade.aeronaveSerie === aeronaveSerie && !atividade.encerradaEm)
+    .map((atividade) => atividade.zonaId));
+}
+
 function liberarModelo(root) {
   root.traverse((object) => {
     if (!object.isMesh) return;
@@ -35,29 +50,76 @@ function liberarModelo(root) {
   });
 }
 
+function restaurarMateriais(savedMaterials) {
+  savedMaterials.forEach((original, mesh) => {
+    const current = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    current.forEach((material) => material.dispose());
+    mesh.material = original;
+  });
+  savedMaterials.clear();
+}
+
+function criarRegiaoAsa(airframe) {
+  const source = airframe.geometry;
+  const positions = source.attributes.position;
+  const normals = source.attributes.normal;
+  const vertices = [];
+  const normais = [];
+  const indices = source.index;
+  const triCount = indices ? indices.count / 3 : positions.count / 3;
+  const vertexAt = (i) => indices ? indices.getX(i) : i;
+
+  for (let tri = 0; tri < triCount; tri += 1) {
+    const ids = [vertexAt(tri * 3), vertexAt(tri * 3 + 1), vertexAt(tri * 3 + 2)];
+    const centro = ids.reduce((sum, id) => ({
+      x: sum.x + positions.getX(id) / 3,
+      y: sum.y + positions.getY(id) / 3,
+      z: sum.z + positions.getZ(id) / 3,
+    }), { x: 0, y: 0, z: 0 });
+    if (Math.abs(centro.x) < 3.5 || centro.y < 1.1 || centro.y > 5 || centro.z < -8 || centro.z > 8) continue;
+    ids.forEach((id) => {
+      vertices.push(positions.getX(id), positions.getY(id), positions.getZ(id));
+      normais.push(normals.getX(id), normals.getY(id), normals.getZ(id));
+    });
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normais, 3));
+  return geometry;
+}
+
 export default function AeronaveMapa3D({ operadorAtivo }) {
   const { aeronaves, operacoes, pontos, atividades = [] } = useRastroState();
   const dispatch = useRastroDispatch();
   const canvasHost = useRef(null);
-  const markerMeshes = useRef([]);
+  const clickableMeshes = useRef([]);
+  const modelRoot = useRef(null);
+  const wingHighlight = useRef(null);
+  const savedMaterials = useRef(new Map());
   const [aeronaveSerie, setAeronaveSerie] = useState(aeronaves[0]?.serie || "");
   const [zonaId, setZonaId] = useState(ZONAS[0].id);
+  const [parteId, setParteId] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [modeloCarregado, setModeloCarregado] = useState(false);
   const [erroModelo, setErroModelo] = useState("");
 
   const zonaSelecionada = ZONAS.find((zona) => zona.id === zonaId) || ZONAS[0];
+  const parteSelecionada = zonaSelecionada.partes?.find((parte) => parte.id === parteId);
+  const atividadeZonaId = parteSelecionada?.id || zonaId;
   const atividadeAtiva = atividades.find((atividade) =>
-    atividade.aeronaveSerie === aeronaveSerie && atividade.zonaId === zonaId && !atividade.encerradaEm
+    atividade.aeronaveSerie === aeronaveSerie && atividade.zonaId === atividadeZonaId && !atividade.encerradaEm
   );
   const historicoAtividades = atividades.filter((atividade) =>
-    atividade.aeronaveSerie === aeronaveSerie && atividade.zonaId === zonaId
+    atividade.aeronaveSerie === aeronaveSerie && (atividade.zonaId === atividadeZonaId || (!parteSelecionada && atividade.zonaId.startsWith(`${zonaId}:`)))
   );
   const operacoesZona = useMemo(() => {
+    if (parteSelecionada) return [];
     const pontosDaZona = new Set(pontos.filter((ponto) => zonaSelecionada.pontos.test(ponto.label)).map((ponto) => ponto.label));
     return operacoes.filter((operacao) =>
       operacao.aeronaveSerie === aeronaveSerie && pontosDaZona.has(operacao.ponto)
     );
-  }, [operacoes, pontos, aeronaveSerie, zonaSelecionada]);
+  }, [operacoes, pontos, aeronaveSerie, zonaSelecionada, parteSelecionada]);
 
   useEffect(() => {
     if (!aeronaves.some((aeronave) => aeronave.serie === aeronaveSerie)) {
@@ -105,19 +167,6 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
       observer.observe(host);
       resize();
 
-      const markers = ZONAS.map((zona) => {
-        const marker = new THREE.Mesh(
-          new THREE.SphereGeometry(0.8, 20, 16),
-          new THREE.MeshStandardMaterial({ color: "#56b4d3", emissive: "#12333d", roughness: 0.35 })
-        );
-        marker.position.set(...zona.posicao);
-        marker.userData.zonaId = zona.id;
-        marker.userData.zonaNome = zona.nome;
-        scene.add(marker);
-        return marker;
-      });
-      markerMeshes.current = markers;
-
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
       const onClick = (event) => {
@@ -125,8 +174,11 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
         pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
         pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
-        const marker = raycaster.intersectObjects(markerMeshes.current)[0]?.object;
-        if (marker) setZonaId(marker.userData.zonaId);
+        const parte = raycaster.intersectObjects(clickableMeshes.current)[0]?.object;
+        if (parte) {
+          setZonaId(parte.userData.zonaId);
+          setParteId(parte.userData.parteId || null);
+        }
       };
       renderer.domElement.addEventListener("click", onClick);
 
@@ -138,6 +190,32 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
             return;
           }
           scene.add(model);
+          modelRoot.current = model;
+          const airframe = model.getObjectByName("airframe");
+          if (airframe) {
+            const highlight = new THREE.Mesh(
+              criarRegiaoAsa(airframe),
+              new THREE.MeshStandardMaterial({ color: "#f2a900", emissive: "#674400", transparent: true, opacity: 0.9, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 })
+            );
+            highlight.visible = false;
+            highlight.userData.zonaId = "asa";
+            airframe.add(highlight);
+            wingHighlight.current = highlight;
+            clickableMeshes.current = [highlight];
+          }
+          model.traverse((object) => {
+            if (!object.isMesh) return;
+            const parte = ZONAS.find((zona) => zona.partes?.some((item) => item.mesh.test(object.name)))?.partes?.find((item) => item.mesh.test(object.name));
+            if (parte) {
+              object.userData.zonaId = "asa";
+              object.userData.parteId = parte.id;
+              clickableMeshes.current.push(object);
+            } else if (/^gear-/.test(object.name)) {
+              object.userData.zonaId = "trem-pouso";
+              clickableMeshes.current.push(object);
+            }
+          });
+          setModeloCarregado(true);
           setCarregando(false);
           controls.target.set(0, 5, 0);
         },
@@ -161,16 +239,20 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
         renderer?.domElement.removeEventListener("click", onClick);
         renderer?.setAnimationLoop(null);
         controls?.dispose();
+        restaurarMateriais(savedMaterials.current);
         liberarModelo(scene);
         renderer?.dispose();
         renderer?.domElement.remove();
-        markerMeshes.current = [];
+        clickableMeshes.current = [];
+        modelRoot.current = null;
+        wingHighlight.current = null;
       };
     } catch {
       setErroModelo("Este navegador não conseguiu iniciar a visualização 3D.");
       setCarregando(false);
       observer?.disconnect();
       controls?.dispose();
+      restaurarMateriais(savedMaterials.current);
       liberarModelo(scene);
       renderer?.dispose();
       renderer?.domElement.remove();
@@ -179,20 +261,44 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
   }, []);
 
   useEffect(() => {
-    markerMeshes.current.forEach((marker) => {
-      const ativa = atividades.some((atividade) =>
-        atividade.aeronaveSerie === aeronaveSerie && atividade.zonaId === marker.userData.zonaId && !atividade.encerradaEm
-      );
-      const selecionada = zonaId === marker.userData.zonaId;
-      marker.material.color.set(selecionada ? "#f2a900" : ativa ? "#5fae7c" : "#56b4d3");
-      marker.material.emissive.set(selecionada ? "#674400" : ativa ? "#1a432a" : "#12333d");
-      marker.scale.setScalar(selecionada ? 1.25 : ativa ? 1.12 : 1);
+    restaurarMateriais(savedMaterials.current);
+
+    const activeIds = activeIdsForAeronave(atividades, aeronaveSerie);
+    if (wingHighlight.current) {
+      const activeWing = [...activeIds].some((id) => id === "asa" || id.startsWith("asa:"));
+      wingHighlight.current.visible = (zonaId === "asa" && !parteSelecionada) || activeIds.has("asa") || (activeWing && !parteSelecionada);
+      const color = zonaId === "asa" && !parteSelecionada ? "#f2a900" : "#5fae7c";
+      wingHighlight.current.material.color.set(color);
+      wingHighlight.current.material.emissive.set(color === "#f2a900" ? "#674400" : "#1a432a");
+    }
+
+    const destacar = (mesh, color) => {
+      const original = mesh.material;
+      const clones = (Array.isArray(original) ? original : [original]).map((material) => {
+        const clone = material.clone();
+        clone.color?.set(color);
+        clone.emissive?.set(color);
+        clone.emissiveIntensity = 0.8;
+        return clone;
+      });
+      savedMaterials.current.set(mesh, original);
+      mesh.material = Array.isArray(original) ? clones : clones[0];
+    };
+
+    modelRoot.current?.traverse((mesh) => {
+      if (!mesh.isMesh || mesh === wingHighlight.current) return;
+      const parte = ZONAS[0].partes.find((item) => item.mesh.test(mesh.name));
+      if (parte && (parteSelecionada?.id === parte.id || activeIds.has(parte.id))) {
+        destacar(mesh, parteSelecionada?.id === parte.id ? "#f2a900" : "#5fae7c");
+      } else if (/^gear-/.test(mesh.name) && (zonaId === "trem-pouso" || activeIds.has("trem-pouso"))) {
+        destacar(mesh, zonaId === "trem-pouso" ? "#f2a900" : "#5fae7c");
+      }
     });
-  }, [atividades, aeronaveSerie, zonaId]);
+  }, [atividades, aeronaveSerie, zonaId, parteSelecionada, modeloCarregado]);
 
   function iniciarAtividade() {
     if (!operadorAtivo || atividadeAtiva) return;
-    dispatch({ type: "INICIAR_ATIVIDADE", payload: { aeronaveSerie, zonaId, operador: operadorAtivo } });
+    dispatch({ type: "INICIAR_ATIVIDADE", payload: { aeronaveSerie, zonaId: atividadeZonaId, operador: operadorAtivo } });
   }
 
   function encerrarAtividade() {
@@ -200,12 +306,17 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
     dispatch({ type: "ENCERRAR_ATIVIDADE", payload: { id: atividadeAtiva.id } });
   }
 
+  function selecionarZona(id) {
+    setZonaId(id);
+    setParteId(null);
+  }
+
   return (
     <section aria-label="Mapa 3D de operações" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ ...panelStyle, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div className="display" style={{ fontSize: 15, fontWeight: 600 }}>Localização esquemática das operações</div>
-          <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 3 }}>Os pontos indicam áreas aproximadas, não posições reais de trabalho.</div>
+          <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 3 }}>As peças destacadas são esquemáticas e não indicam posições reais de trabalho.</div>
         </div>
         <label style={{ color: "var(--text-dim)", fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
           Aeronave
@@ -221,7 +332,7 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
             {carregando && !erroModelo && <div style={{ position: "absolute", zIndex: 1, inset: 0, display: "grid", placeItems: "center", color: "var(--text-dim)", background: "#191c1e" }}>Carregando avião 3D…</div>}
             {erroModelo && <div role="status" style={{ position: "absolute", zIndex: 1, inset: 0, display: "grid", placeItems: "center", padding: 24, textAlign: "center", color: "var(--red)", background: "#191c1e" }}>{erroModelo}</div>}
           </div>
-          <div style={{ padding: "10px 14px", borderTop: "1px solid var(--line)", color: "var(--text-faint)", fontSize: 11.5 }}>Arraste para girar · role para aproximar · selecione um marcador ou uma zona ao lado.</div>
+          <div style={{ padding: "10px 14px", borderTop: "1px solid var(--line)", color: "var(--text-faint)", fontSize: 11.5 }}>Arraste para girar · role para aproximar · clique numa peça destacada para selecioná-la.</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -229,16 +340,24 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
             <div className="display" style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Zonas do avião</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
               {ZONAS.map((zona) => {
-                const ativa = atividades.some((atividade) => atividade.aeronaveSerie === aeronaveSerie && atividade.zonaId === zona.id && !atividade.encerradaEm);
-                return <button key={zona.id} type="button" className="ghost-btn focus-ring" onClick={() => setZonaId(zona.id)} aria-pressed={zonaId === zona.id} style={{ padding: "10px 8px", borderColor: zonaId === zona.id ? "var(--amber)" : undefined, color: zonaId === zona.id ? "var(--text)" : undefined, fontSize: 12 }}>
+                const ativa = [...activeIdsForAeronave(atividades, aeronaveSerie)].some((id) => id === zona.id || id.startsWith(`${zona.id}:`));
+                return <button key={zona.id} type="button" className="ghost-btn focus-ring" onClick={() => selecionarZona(zona.id)} aria-pressed={zonaId === zona.id && !parteSelecionada} style={{ padding: "10px 8px", borderColor: zonaId === zona.id && !parteSelecionada ? "var(--amber)" : undefined, color: zonaId === zona.id && !parteSelecionada ? "var(--text)" : undefined, fontSize: 12 }}>
                   {zona.nome}{ativa ? " · em andamento" : ""}
                 </button>;
               })}
             </div>
+            {zonaSelecionada.partes && <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 7 }}>
+              {zonaSelecionada.partes.map((parte) => {
+                const ativa = atividades.some((atividade) => atividade.aeronaveSerie === aeronaveSerie && atividade.zonaId === parte.id && !atividade.encerradaEm);
+                return <button key={parte.id} type="button" className="ghost-btn focus-ring" onClick={() => setParteId(parte.id)} aria-pressed={parteSelecionada?.id === parte.id} style={{ padding: "8px 5px", fontSize: 11, borderColor: parteSelecionada?.id === parte.id ? "var(--amber)" : undefined, color: parteSelecionada?.id === parte.id ? "var(--text)" : undefined }}>
+                  {parte.nome}{ativa ? " · ativa" : ""}
+                </button>;
+              })}
+            </div>}
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <div>
-                  <div className="display" style={{ fontSize: 14, fontWeight: 600 }}>{zonaSelecionada.nome}</div>
+                  <div className="display" style={{ fontSize: 14, fontWeight: 600 }}>{zonaSelecionada.nome}{parteSelecionada ? ` · ${parteSelecionada.nome}` : ""}</div>
                   {atividadeAtiva
                     ? <div style={{ color: "var(--green)", fontSize: 12, marginTop: 3 }}>Em andamento desde {formatarData(atividadeAtiva.iniciadaEm)} · {atividadeAtiva.operador}</div>
                     : <div style={{ color: "var(--text-faint)", fontSize: 12, marginTop: 3 }}>Sem atividade em andamento nesta zona.</div>}
@@ -252,16 +371,17 @@ export default function AeronaveMapa3D({ operadorAtivo }) {
 
           <div style={panelStyle}>
             <div className="display" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Operações registradas</div>
-            {operacoesZona.length ? operacoesZona.map((operacao, index) => <div key={`${operacao.ponto}-${operacao.hora}-${index}`} style={{ borderTop: "1px solid var(--line)", padding: "9px 0 2px", marginTop: 8 }}>
+            {parteSelecionada && <div style={{ fontSize: 12, color: "var(--text-faint)" }}>Esta peça ainda não tem registros de torque próprios. Use iniciar/encerrar atividade para acompanhá-la separadamente.</div>}
+            {!parteSelecionada && (operacoesZona.length ? operacoesZona.map((operacao, index) => <div key={`${operacao.ponto}-${operacao.hora}-${index}`} style={{ borderTop: "1px solid var(--line)", padding: "9px 0 2px", marginTop: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12 }}><strong>{operacao.ponto}</strong><span style={{ color: operacao.ok ? "var(--green)" : "var(--red)", whiteSpace: "nowrap" }}>{operacao.ok ? "Conforme" : "Não conforme"}</span></div>
               <div className="mono" style={{ fontSize: 10.5, color: "var(--text-dim)", marginTop: 4 }}>{formatarOperacaoDate(operacao)} · {operacao.ferramenta} · {operacao.operador}</div>
-            </div>) : <div style={{ fontSize: 12, color: "var(--text-faint)" }}>Ainda não há registros para esta aeronave e zona.</div>}
+            </div>) : <div style={{ fontSize: 12, color: "var(--text-faint)" }}>Ainda não há registros para esta aeronave e zona.</div>)}
           </div>
 
           {historicoAtividades.length > 0 && <div style={panelStyle}>
             <div className="display" style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Histórico de atividades</div>
             {historicoAtividades.map((atividade) => <div key={atividade.id} style={{ borderTop: "1px solid var(--line)", padding: "8px 0 2px", marginTop: 7, fontSize: 11.5, color: atividade.encerradaEm ? "var(--text-dim)" : "var(--green)" }}>
-              {atividade.encerradaEm ? "Encerrada" : "Em andamento"} · {atividade.operador}<br />
+              {atividade.encerradaEm ? "Encerrada" : "Em andamento"} · {ZONAS.flatMap((zona) => zona.partes || []).find((parte) => parte.id === atividade.zonaId)?.nome || zonaSelecionada.nome} · {atividade.operador}<br />
               início: {formatarData(atividade.iniciadaEm)}{atividade.encerradaEm ? ` · fim: ${formatarData(atividade.encerradaEm)}` : ""}
             </div>)}
           </div>}

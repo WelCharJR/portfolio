@@ -14,7 +14,8 @@ Dar uma visão geral e interativa de onde os registros de operação do Rastro s
 
 - Adicionar uma aba `Mapa 3D` no painel do Rastro.
 - Renderizar o GLB Narrow-Body Airliner escolhido. Permitir girar e aproximar/afastar o modelo.
-- Selecionar aeronave e zona; mostrar marcadores clicáveis em posições aproximadas de asa e trem de pouso. Outras zonas podem aparecer sem atividade.
+- Selecionar aeronave e zona clicando nas próprias peças coloridas do modelo; a asa inteira é a área principal e o trem de pouso é outra zona.
+- Ao selecionar a asa, oferecer flaps, ailerons e spoilers como peças menores clicáveis e atividades independentes.
 - Associar pontos já existentes às zonas: longarina, nervura e painel à asa; trem de pouso ao trem de pouso.
 - Ao selecionar uma zona, mostrar registros de operação correspondentes, incluindo data, ponto, ferramenta e operador.
 - Permitir iniciar e encerrar manualmente uma atividade na zona selecionada. A atividade usa o perfil demo ativo como responsável e registra início e encerramento.
@@ -27,7 +28,7 @@ Dar uma visão geral e interativa de onde os registros de operação do Rastro s
 ## Limites e pressupostos
 
 - O Rastro atualmente guarda operações registradas, sem estado de trabalho em andamento. O mapa representa operações registradas por zona e aeronave, e não afirma que um processo está ocorrendo neste instante.
-- Os dados atuais não têm coordenadas exatas. A posição dos marcadores é ilustrativa.
+- Os dados atuais não têm coordenadas exatas. A área geral destacada na asa é aproximada; o modelo genérico não separa sua pele, longarinas ou nervuras.
 - Uma atividade em andamento só aparece depois de alguém iniciá-la manualmente no mapa; o sistema não infere atividade real.
 - Atividades e seus horários são dados de demonstração locais, não apontamentos operacionais reais.
 - O modelo GLB é um narrow-body genérico, não a representação exata de um E175/E195; será substituído quando houver um modelo fornecido pela empresa.

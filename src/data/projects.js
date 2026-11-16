@@ -82,8 +82,9 @@ export const projects = [
     tags: ["React", "Three.js", "logística", "3D"],
     stack: ["React 18", "Three.js", "localStorage"],
     highlights: [
-      "Hangar 3D com câmera orbital, zoom e pontos logísticos selecionáveis",
-      "Kanbans arrastáveis com seus itens e quantidades",
+      "Hangar 3D com câmera orbital, estrutura industrial e kanbans de múltiplas caixas",
+      "Áreas livres e caminhos desenhados sobre o piso, com largura ajustável",
+      "Kanbans arrastáveis e layout salvo localmente no navegador",
       "Layout guardado localmente neste navegador, sem conta ou serviço externo",
     ],
     year: "2026",

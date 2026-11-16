@@ -88,6 +88,8 @@ export const projects = [
     ],
     year: "2026",
   },
-];\n\nexport function getProject(slug) {
+];
+
+export function getProject(slug) {
   return projects.find((p) => p.slug === slug);
 }

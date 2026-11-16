@@ -74,8 +74,20 @@ export const projects = [
     ],
     year: "2026",
   },
-];
-
-export function getProject(slug) {
+  {
+    slug: "logistica",
+    title: "Hangar Logístico",
+    tagline: "Hangar 3D interativo para organizar kanbans e materiais aeronáuticos",
+    summary: "Explore um hangar tridimensional, mova pontos logísticos e consulte os materiais guardados em cada kanban. O layout fica salvo localmente no navegador.",
+    tags: ["React", "Three.js", "logística", "3D"],
+    stack: ["React 18", "Three.js", "localStorage"],
+    highlights: [
+      "Hangar 3D com câmera orbital, zoom e pontos logísticos selecionáveis",
+      "Kanbans arrastáveis com seus itens e quantidades",
+      "Layout guardado localmente neste navegador, sem conta ou serviço externo",
+    ],
+    year: "2026",
+  },
+];\n\nexport function getProject(slug) {
   return projects.find((p) => p.slug === slug);
 }

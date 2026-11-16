@@ -10,7 +10,8 @@ const registry = {
   "glass-cockpit": lazy(() => import("../projects/glass-cockpit/App.jsx")),
   dmaic: lazy(() => import("../projects/dmaic/App.jsx")),
   "weapons-display": lazy(() => import("../projects/weapons-display/App.jsx")),
-  opt: lazy(() => import("../projects/opt/App.jsx")),\n  logistica: lazy(() => import("../projects/logistica/App.jsx")),
+  opt: lazy(() => import("../projects/opt/App.jsx")),
+  logistica: lazy(() => import("../projects/logistica/App.jsx")),
 };
 
 export default function ProjectPage() {

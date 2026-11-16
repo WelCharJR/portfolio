@@ -18,6 +18,10 @@ export default function Logistica() {
   const [layout, setLayout] = useState(loadLayout);
   const [selected, setSelected] = useState(null);
   const [notice, setNotice] = useState("Arraste os kanbans para reorganizar o hangar.");
+  const [tool, setTool] = useState("select");
+  const [draft, setDraft] = useState([]);
+  const toolRef = useRef("select");
+  const draftRef = useRef([]);
 
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify(layout)); }, [layout]);
 
@@ -66,6 +70,7 @@ export default function Logistica() {
     for(let x=-12;x<=12;x+=1.5) addBox(.09,.018,18,x,.03,2,new THREE.MeshStandardMaterial({color:"#a8b0a2"}));
     const wallMat = steel;
     const kanbanMeshes = new Map();
+    const drawnMeshes = [];
     layout.kanbans.forEach((k, i) => {
       const group = new THREE.Group(); group.position.set(k.x,0,k.z); group.userData.id = k.id;
       const wood = new THREE.MeshStandardMaterial({ color:"#9a7042", roughness:.8 });
@@ -87,12 +92,25 @@ export default function Logistica() {
       scene.add(group); kanbanMeshes.set(k.id, group);
     });
 
+    layout.areas.forEach(area => {
+      const shape=new THREE.Shape();
+      area.points.forEach((p,i)=>i===0?shape.moveTo(p.x,-p.z):shape.lineTo(p.x,-p.z));
+      shape.closePath();
+      const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshStandardMaterial({color:"#4aa899",transparent:true,opacity:.34,side:THREE.DoubleSide,roughness:.7}));
+      mesh.rotation.x=-Math.PI/2; mesh.position.y=.05; mesh.userData.id=area.id; mesh.userData.kind="area"; scene.add(mesh); drawnMeshes.push(mesh);
+    });
+    layout.paths.forEach(path => {
+      if(path.points.length<2)return;
+      const curve=new THREE.CatmullRomCurve3(path.points.map(p=>new THREE.Vector3(p.x,.09,p.z)));
+      const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,Math.max(12,path.points.length*8),Math.max(.08,(path.width||.5)/2),8,false),new THREE.MeshStandardMaterial({color:"#e2b644",emissive:"#60430b",roughness:.58}));
+      mesh.userData.id=path.id; mesh.userData.kind="path"; scene.add(mesh); drawnMeshes.push(mesh);
+    });
     const controls = { down:false, lastX:0,lastY:0, angle:.63,radius:38, target:new THREE.Vector3(0,0,0), dragging:null };
     const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
     const plane = new THREE.Plane(new THREE.Vector3(0,1,0),0), hit = new THREE.Vector3();
     function cameraUpdate(){ camera.position.set(controls.target.x+Math.sin(controls.angle)*controls.radius, controls.radius*.62, controls.target.z+Math.cos(controls.angle)*controls.radius); camera.lookAt(controls.target); }
     cameraUpdate();
-    const onDown=e=>{ controls.down=true; controls.lastX=e.clientX; controls.lastY=e.clientY; pointer.set(e.offsetX/host.clientWidth*2-1,-e.offsetY/host.clientHeight*2+1); raycaster.setFromCamera(pointer,camera); const hits=raycaster.intersectObjects([...kanbanMeshes.values()],true); if(hits.length){ let o=hits[0].object; while(o.parent && !o.userData.id)o=o.parent; controls.dragging=o.userData.id; setSelected(o.userData.id); } renderer.domElement.setPointerCapture(e.pointerId); };
+    const onDown=e=>{ controls.down=true; controls.lastX=e.clientX; controls.lastY=e.clientY; pointer.set(e.offsetX/host.clientWidth*2-1,-e.offsetY/host.clientHeight*2+1); raycaster.setFromCamera(pointer,camera); if(toolRef.current==="area"||toolRef.current==="path"){ if(raycaster.ray.intersectPlane(plane,hit)){ const next=[...draftRef.current,{x:Math.round(hit.x),z:Math.round(hit.z)}]; draftRef.current=next; setDraft(next); } controls.down=false; return; } const hits=raycaster.intersectObjects([...kanbanMeshes.values(),...drawnMeshes],true); if(hits.length){ let o=hits[0].object; while(o.parent && !o.userData.id)o=o.parent; controls.dragging=o.userData.id; setSelected(o.userData.id); } renderer.domElement.setPointerCapture(e.pointerId); };
     const onMove=e=>{ if(!controls.down)return; const dx=e.clientX-controls.lastX,dy=e.clientY-controls.lastY; controls.lastX=e.clientX; controls.lastY=e.clientY; if(controls.dragging){ pointer.set(e.offsetX/host.clientWidth*2-1,-e.offsetY/host.clientHeight*2+1); raycaster.setFromCamera(pointer,camera); if(raycaster.ray.intersectPlane(plane,hit)){ const m=kanbanMeshes.get(controls.dragging); m.position.x=Math.round(hit.x); m.position.z=Math.round(hit.z); } } else { controls.angle-=dx*.006; controls.radius=Math.max(18,Math.min(55,controls.radius+dy*.08)); cameraUpdate(); } };
     const onUp=()=>{ if(controls.dragging){const id=controls.dragging,m=kanbanMeshes.get(id); setLayout(prev=>({...prev,kanbans:prev.kanbans.map(k=>k.id===id?{...k,x:m.position.x,z:m.position.z}:k)})); controls.dragging=null; setNotice("Posição salva neste navegador.");} controls.down=false; };
     const onWheel=e=>{controls.radius=Math.max(18,Math.min(55,controls.radius+e.deltaY*.02));cameraUpdate();};
@@ -101,9 +119,15 @@ export default function Logistica() {
     const resize=()=>{camera.aspect=host.clientWidth/host.clientHeight;camera.updateProjectionMatrix();renderer.setSize(host.clientWidth,host.clientHeight);};
     window.addEventListener("resize",resize);
     return()=>{cancelAnimationFrame(frame);window.removeEventListener("resize",resize);renderer.dispose();host.removeChild(renderer.domElement);};
-  }, [layout.kanbans]);
+  }, [layout.kanbans, layout.areas, layout.paths]);
 
   const addKanban=()=>{const id="K-"+String(Date.now()).slice(-4); setLayout(p=>({...p,kanbans:[...p.kanbans,{id,name:"Novo kanban",x:0,z:0,items:[{name:"Novo item",qty:0,unit:"un"}]}]}));setSelected(id);setNotice("Kanban adicionado. Arraste-o para o local desejado.");};
+  const chooseTool=(next)=>{toolRef.current=next;setTool(next);draftRef.current=[];setDraft([]);setNotice(next==="area"?"Clique no piso para marcar os vértices da área.":"Clique no piso para traçar o caminho.");};
+  const finishDrawing=()=>{const points=draftRef.current;if(toolRef.current==="area"&&points.length>=3){const id="A-"+String(Date.now()).slice(-4);setLayout(p=>({...p,areas:[...p.areas,{id,name:"Área "+(p.areas.length+1),points}]}));setSelected(id);setNotice("Área adicionada ao layout.");}else if(toolRef.current==="path"&&points.length>=2){const id="R-"+String(Date.now()).slice(-4);setLayout(p=>({...p,paths:[...p.paths,{id,name:"Caminho "+(p.paths.length+1),points,width:.5}]}));setSelected(id);setNotice("Caminho adicionado ao layout.");}draftRef.current=[];setDraft([]);toolRef.current="select";setTool("select");};
+  const cancelDrawing=()=>{draftRef.current=[];setDraft([]);toolRef.current="select";setTool("select");};
+  const removeSelected=()=>{setLayout(p=>({...p,areas:p.areas.filter(x=>x.id!==selected),paths:p.paths.filter(x=>x.id!==selected)}));setSelected(null);};
+  const currentPath=layout.paths.find(x=>x.id===selected);
   const current=layout.kanbans.find(k=>k.id===selected);
-  return <div className="log-app"><header className="log-top"><div><span className="log-eyebrow">HANGAR DIGITAL · LOGÍSTICA</span><h2>Layout de materiais</h2></div><button onClick={addKanban}>＋ Novo kanban</button></header><div className="log-body"><section className="log-scene"><div className="log-hint">BOTÃO ESQUERDO: MOVER · ARRASTAR: KANBAN · RODA: ZOOM</div><div className="log-canvas" ref={canvas}/><div className="log-status"><i/> {notice}</div></section><aside className="log-panel"><span className="log-eyebrow">MAPA DO HANGAR</span><strong>{layout.kanbans.length} pontos logísticos</strong><div className="log-list">{layout.kanbans.map(k=><button className={selected===k.id?"active":""} key={k.id} onClick={()=>setSelected(k.id)}><span className="log-dot"/><span><b>{k.name}</b><small>{k.id} · {k.items.length} itens</small></span></button>)}</div>{current&&<div className="log-detail"><span className="log-eyebrow">CONTEÚDO DO KANBAN</span><h3>{current.name}</h3>{current.items.map((it,i)=><div className="log-item" key={i}><span>{it.name}</span><b>{it.qty} {it.unit}</b></div>)}</div>}<small className="log-local">● Dados salvos localmente neste navegador</small></aside></div></div>;
+
+  return <div className="log-app"><header className="log-top"><div><span className="log-eyebrow">HANGAR DIGITAL · LOGÍSTICA</span><h2>Layout de materiais</h2></div><div className="log-actions"><button onClick={addKanban}>＋ Kanban</button></div></header><div className="log-body"><section className="log-scene"><div className="log-tools"><button className={tool==="select"?"active":""} onClick={()=>chooseTool("select")}>Selecionar</button><button className={tool==="area"?"active":""} onClick={()=>chooseTool("area")}>＋ Área</button><button className={tool==="path"?"active":""} onClick={()=>chooseTool("path")}>＋ Caminho</button>{tool!=="select"&&<><span>{draft.length} pontos</span><button onClick={finishDrawing} disabled={draft.length<(tool==="area"?3:2)}>Concluir</button><button onClick={cancelDrawing}>Cancelar</button></>}</div><div className="log-hint">{tool==="area"?"CLIQUE NO PISO PARA DESENHAR A ÁREA":"CLIQUE NO PISO PARA DESENHAR O CAMINHO"} · ARRASTE KANBANS · RODA: ZOOM</div><div className="log-canvas" ref={canvas}/><div className="log-status"><i/> {notice}</div></section><aside className="log-panel"><span className="log-eyebrow">LAYOUT DO HANGAR</span><strong>{layout.kanbans.length} kanbans · {layout.areas.length} áreas · {layout.paths.length} caminhos</strong><div className="log-list">{layout.kanbans.map(k=><button className={selected===k.id?"active":""} key={k.id} onClick={()=>setSelected(k.id)}><span className="log-dot"/><span><b>{k.name}</b><small>{k.id} · {k.items.length} itens</small></span></button>)}{layout.areas.map(a=><button className={selected===a.id?"active":""} key={a.id} onClick={()=>setSelected(a.id)}><span className="log-dot area"/><span><b>{a.name}</b><small>{a.id} · área · {a.points.length} vértices</small></span></button>)}{layout.paths.map(a=><button className={selected===a.id?"active":""} key={a.id} onClick={()=>setSelected(a.id)}><span className="log-dot path"/><span><b>{a.name}</b><small>{a.id} · caminho · largura {a.width} m</small></span></button>)}</div>{current&&<div className="log-detail"><span className="log-eyebrow">CONTEÚDO DO KANBAN</span><h3>{current.name}</h3>{current.items.map((it,i)=><div className="log-item" key={i}><span>{it.name}</span><b>{it.qty} {it.unit}</b></div>)}</div>}{currentPath&&<div className="log-detail"><span className="log-eyebrow">CAMINHO SELECIONADO</span><h3>{currentPath.name}</h3><label className="log-width">Largura <input type="number" min=".2" max="4" step=".1" value={currentPath.width} onChange={e=>setLayout(p=>({...p,paths:p.paths.map(x=>x.id===currentPath.id?{...x,width:Number(e.target.value)}:x)}))}/> m</label><button className="log-delete" onClick={removeSelected}>Remover caminho</button></div>}{layout.areas.some(a=>a.id===selected)&&<div className="log-detail"><span className="log-eyebrow">ÁREA SELECIONADA</span><h3>{layout.areas.find(a=>a.id===selected)?.name}</h3><button className="log-delete" onClick={removeSelected}>Remover área</button></div>}<small className="log-local">● Dados salvos localmente neste navegador</small></aside></div></div>;
 }

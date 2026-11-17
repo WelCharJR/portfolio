@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { pathTypes } from "../constants.js";
 
 // Painel lateral: busca de material, lista de itens do layout e detalhes do item selecionado.
@@ -7,6 +8,8 @@ export default function SidePanel({
   query,
   selectedSlotId,
   onQuery,
+  onAddItem,
+  onRemoveItem,
   onSelect,
   onOpenKanban,
   onNotice,
@@ -26,6 +29,13 @@ export default function SidePanel({
           .map((s) => ({ kanban: k, slot: s })),
       )
     : [];
+  const [kanbanId, setKanbanId] = useState(layout.kanbans[0]?.id || "");
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [qty, setQty] = useState("10");
+  const [unit, setUnit] = useState("un");
+  const inventory = layout.kanbans.flatMap((kanban) => kanban.slots.filter((slot) => slot.code).map((slot) => ({kanban, slot})));
+  const submitItem = (e) => { e.preventDefault(); if (!code.trim()) return; onAddItem({kanbanId, code:code.trim(), name:name.trim(), qty:Math.max(0,Number(qty)||0), unit:unit.trim()||"un"}); setCode(""); setName(""); };
   const currentPath = layout.paths.find((x) => x.id === selected);
   const current = layout.kanbans.find((k) => k.id === selected);
   return (
@@ -63,6 +73,17 @@ export default function SidePanel({
           </div>
         )}
       </div>
+      <section className="inventory-manager">
+        <span className="log-eyebrow">GERENCIAR MATERIAIS</span>
+        <form onSubmit={submitItem}>
+          <select value={kanbanId} onChange={e=>setKanbanId(e.target.value)} aria-label="Kanban de destino">{layout.kanbans.map(k=><option key={k.id} value={k.id}>{k.id} · {k.name}</option>)}</select>
+          <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Código do item" aria-label="Código do item" required />
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Descrição" aria-label="Descrição" />
+          <div><input type="number" min="0" value={qty} onChange={e=>setQty(e.target.value)} aria-label="Quantidade"/><input value={unit} onChange={e=>setUnit(e.target.value)} aria-label="Unidade"/></div>
+          <button type="submit">Adicionar à próxima caixa livre</button>
+        </form>
+        <div className="inventory-list">{inventory.map(({kanban,slot})=><div key={kanban.id+slot.id}><span><b>{slot.code}</b><small>{kanban.id} · {slot.id} · {slot.qty} {slot.unit}</small></span><button aria-label={"Remover "+slot.code+" de "+slot.id} onClick={()=>onRemoveItem(kanban.id,slot.id)}>×</button></div>)}</div>
+      </section>
       <strong>
         {layout.kanbans.length} kanbans · {layout.areas.length} áreas · {layout.paths.length}{" "}
         caminhos

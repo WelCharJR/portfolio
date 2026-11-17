@@ -67,10 +67,13 @@ export default function Logistica() {
   });
 
   const addKanban = () => {
+    const enteredName = window.prompt("Nome do kanban (deixe vazio para usar o nome genérico):", "");
+    if (enteredName === null) return;
+    const name = enteredName.trim() || "Novo kanban";
     const id = "K-" + String(Date.now()).slice(-4);
     setLayout((p) => ({
       ...p,
-      kanbans: [...p.kanbans, { id, name: "Novo kanban", x: 0, z: 0, slots: emptySlots() }],
+      kanbans: [...p.kanbans, { id, name, x: 0, z: 0, slots: emptySlots() }],
     }));
     setSelected(id);
     setNotice("Kanban adicionado. Arraste-o para o local desejado.");
@@ -109,11 +112,12 @@ export default function Logistica() {
   };
   const addItem = (item) => {
     const kanban = layout.kanbans.find((k) => k.id === item.kanbanId);
-    const slot = kanban?.slots.find((s) => !s.code);
+    const slot = kanban?.slots.find((s) => item.slotId ? s.id === item.slotId && !s.code : !s.code);
     if (!slot) { setNotice("Kanban sem caixas livres."); return; }
     setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id !== kanban.id ? k : { ...k, slots: k.slots.map((s) => s.id !== slot.id ? s : { ...s, code: item.code, name: item.name, qty: item.qty, unit: item.unit }) }) }));
     setNotice(item.code + " adicionado em " + kanban.id + " · " + slot.id);
   };
+  const renameKanban = (id, name) => setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, name } : k) }));
   const removeItem = (kanbanId, slotId) => {
     setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id !== kanbanId ? k : { ...k, slots: k.slots.map((s) => s.id !== slotId ? s : { ...s, code: "", name: "", qty: 0, unit: "un" }) }) }));
   };
@@ -249,6 +253,7 @@ export default function Logistica() {
           onQuery={setQuery}
           onAddItem={addItem}
           onRemoveItem={removeItem}
+          onRenameKanban={renameKanban}
           onSelect={setSelected}
           onOpenKanban={openKanban}
           onNotice={setNotice}

@@ -33,7 +33,6 @@ export default function Logistica() {
   const [inspectedKanban, setInspectedKanban] = useState(null);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [focusedSlotId, setFocusedSlotId] = useState(null);
-  const [hoveredItem, setHoveredItem] = useState(null);
   const kanbanPositions = layout.kanbans.map(({ id, x, z }) => id + ":" + x + ":" + z).join("|");
 
   useEffect(() => {
@@ -64,7 +63,6 @@ export default function Logistica() {
       setDraft,
       setCursorWorld,
       setCursorScreen,
-      setHoveredItem,
     },
   });
 
@@ -241,7 +239,6 @@ export default function Logistica() {
           cursorWorld={cursorWorld}
           cursorScreen={cursorScreen}
           notice={notice}
-          hoveredItem={hoveredItem}
           onChooseTool={chooseTool}
           onChoosePathType={choosePathType}
           onToggleSnap={toggleSnap}

@@ -11,6 +11,9 @@ export default function SidePanel({
   onAddItem,
   onRemoveItem,
   onRenameKanban,
+  onRotateKanban,
+  onExportBackup,
+  onImportBackup,
   onSelect,
   onOpenKanban,
   onNotice,
@@ -85,6 +88,7 @@ export default function SidePanel({
           <div><input type="number" min="0" value={qty} onChange={e=>setQty(e.target.value)} aria-label="Quantidade"/><input value={unit} onChange={e=>setUnit(e.target.value)} aria-label="Unidade"/></div>
           <button type="submit">Adicionar à próxima caixa livre</button>
         </form>
+        <div className="backup-actions"><button type="button" onClick={onExportBackup}>Exportar backup</button><label>Restaurar backup<input type="file" accept=".json,application/json" onChange={(e)=>{const file=e.target.files?.[0];if(file)onImportBackup(file);e.target.value="";}} /></label></div>
         <div className="inventory-list">{inventory.map(({kanban,slot})=><div key={kanban.id+slot.id}><span><b>{slot.code}</b><small>{kanban.id} · {slot.id} · {slot.qty} {slot.unit}</small></span><button aria-label={"Remover "+slot.code+" de "+slot.id} onClick={()=>onRemoveItem(kanban.id,slot.id)}>×</button></div>)}</div>
       </section>
       <strong>
@@ -142,6 +146,7 @@ export default function SidePanel({
         <div className="log-detail">
           <span className="log-eyebrow">KANBAN SELECIONADO</span>
           <label className="kanban-rename">Nome do kanban<input value={current.name} onChange={e=>onRenameKanban(current.id,e.target.value)} /></label>
+          <div className="kanban-rotation"><span>Orientação · {current.rotation||0}°</span><div><button type="button" aria-label="Girar kanban 15 graus para a esquerda" onClick={()=>onRotateKanban(current.id,-15)}>↶ 15°</button><button type="button" aria-label="Girar kanban 15 graus para a direita" onClick={()=>onRotateKanban(current.id,15)}>↷ 15°</button></div></div>
           <div className="log-item">
             <span>Caixas ocupadas</span>
             <b>

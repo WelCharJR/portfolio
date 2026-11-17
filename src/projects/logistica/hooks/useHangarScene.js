@@ -99,6 +99,7 @@ export function useHangarScene({
       lastX: 0,
       lastY: 0,
       angle: 0.63,
+      angleGoal: 0.63,
       radius: 68,
       radiusGoal: 68,
       target: new THREE.Vector3(0, 0, 0),
@@ -150,6 +151,7 @@ export function useHangarScene({
     };
     focusRef.current = (x, z, radius = 10) => {
       controls.targetGoal.set(x, 0, z);
+      controls.angleGoal = 0;
       controls.radiusGoal = radius;
     };
     const onDown = (e) => {
@@ -204,7 +206,7 @@ export function useHangarScene({
           if (nextHoveredSlot !== hoveredSlot) {
             hoveredSlot = nextHoveredSlot;
             const item = hoveredSlot && layoutRef.current.kanbans.find((k) => k.id === hoveredSlot.userData.kanbanId)?.slots.find((slot) => slot.id === hoveredSlot.userData.slotId);
-            setHoveredItem(item?.code ? { ...item, kanbanId: hoveredSlot.userData.kanbanId } : null);
+            setHoveredItem(hoveredSlot ? (item?.code ? { ...item, kanbanId: hoveredSlot.userData.kanbanId } : { id: hoveredSlot.userData.slotId, kanbanId: hoveredSlot.userData.kanbanId, code: "", name: "Caixa vazia", qty: 0, unit: "un" }) : null);
           }
           hoverFx.hover(hoveredSlot, performance.now());
           renderer.domElement.style.cursor = hoveredSlot ? "pointer" : "grab";
@@ -238,7 +240,7 @@ export function useHangarScene({
           m.position.z = point.z;
         }
       } else {
-        controls.angle -= dx * 0.006;
+        controls.angleGoal -= dx * 0.006;
         controls.radiusGoal = Math.max(28, Math.min(100, controls.radiusGoal + dy * 0.08));
       }
     };
@@ -279,6 +281,7 @@ export function useHangarScene({
       hoverFx.update(time);
       const damping = 1 - Math.exp(-5 * clock.getDelta());
       controls.target.lerp(controls.targetGoal, damping);
+      controls.angle += (controls.angleGoal - controls.angle) * damping;
       controls.radius += (controls.radiusGoal - controls.radius) * damping;
       slotGroups.forEach((object) => {
         const scale = object === hoveredSlot ? 1.08 : 1;

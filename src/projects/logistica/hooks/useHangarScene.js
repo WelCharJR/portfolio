@@ -92,7 +92,9 @@ export function useHangarScene({
       lastY: 0,
       angle: 0.63,
       radius: 68,
+      radiusGoal: 68,
       target: new THREE.Vector3(0, 0, 0),
+      targetGoal: new THREE.Vector3(0, 0, 0),
       dragging: null,
     };
     const raycaster = new THREE.Raycaster(),
@@ -125,13 +127,11 @@ export function useHangarScene({
       refreshPreview = preview.refresh;
     clearPreviewRef.current = clearPreview;
     zoomRef.current = (amount) => {
-      controls.radius = Math.max(28, Math.min(100, controls.radius + amount));
-      cameraUpdate();
+      controls.radiusGoal = Math.max(9, Math.min(100, controls.radiusGoal + amount));
     };
     focusRef.current = (x, z, radius = 10) => {
-      controls.target.set(x, 0, z);
-      controls.radius = radius;
-      cameraUpdate();
+      controls.targetGoal.set(x, 0, z);
+      controls.radiusGoal = radius;
     };
     const onDown = (e) => {
       controls.down = true;
@@ -170,8 +170,18 @@ export function useHangarScene({
       }
       renderer.domElement.setPointerCapture(e.pointerId);
     };
+    let hoveredSlot = null;
     const onMove = (e) => {
       if (!controls.down) {
+        if (toolRef.current === "select") {
+          updatePointer(e);
+          raycaster.setFromCamera(pointer, camera);
+          const hit = raycaster.intersectObjects([...kanbanMeshes.values()], true)[0]?.object;
+          let owner = hit;
+          while (owner && !owner.userData.slotId) owner = owner.parent;
+          hoveredSlot = owner || null;
+          renderer.domElement.style.cursor = hoveredSlot ? "pointer" : "grab";
+        }
         if (toolRef.current === "area" || toolRef.current === "path") {
           const screen = updatePointer(e);
           setCursorScreen(screen);
@@ -201,8 +211,7 @@ export function useHangarScene({
         }
       } else {
         controls.angle -= dx * 0.006;
-        controls.radius = Math.max(28, Math.min(100, controls.radius + dy * 0.08));
-        cameraUpdate();
+        controls.radiusGoal = Math.max(28, Math.min(100, controls.radiusGoal + dy * 0.08));
       }
     };
     const onUp = () => {
@@ -224,8 +233,18 @@ export function useHangarScene({
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);
     let frame;
+    const clock = new THREE.Clock();
     const draw = () => {
       frame = requestAnimationFrame(draw);
+      const damping = 1 - Math.exp(-5 * clock.getDelta());
+      controls.target.lerp(controls.targetGoal, damping);
+      controls.radius += (controls.radiusGoal - controls.radius) * damping;
+      kanbanMeshes.forEach((rack) => rack.traverse((object) => {
+        if (!object.userData.slotId) return;
+        const scale = object === hoveredSlot ? 1.08 : 1;
+        object.scale.lerp(new THREE.Vector3(scale, scale, scale), damping);
+      }));
+      cameraUpdate();
       renderer.render(scene, camera);
     };
     draw();

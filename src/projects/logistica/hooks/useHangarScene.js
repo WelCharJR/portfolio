@@ -27,6 +27,7 @@ export function useHangarScene({
     setDraft,
     setCursorWorld,
     setCursorScreen,
+    setHoveredItem,
   } = setters;
 
   // Sempre o layout mais recente (a cena não é recriada ao adicionar ou editar itens).
@@ -199,6 +200,8 @@ export function useHangarScene({
           let owner = hit;
           while (owner && !owner.userData.slotId) owner = owner.parent;
           hoveredSlot = owner || null;
+          const item = hoveredSlot && layoutRef.current.kanbans.find((k) => k.id === hoveredSlot.userData.kanbanId)?.slots.find((slot) => slot.id === hoveredSlot.userData.slotId);
+          setHoveredItem(item?.code ? { ...item, kanbanId: hoveredSlot.userData.kanbanId } : null);
           hoverFx.hover(hoveredSlot, performance.now());
           renderer.domElement.style.cursor = hoveredSlot ? "pointer" : "grab";
         }
@@ -250,10 +253,23 @@ export function useHangarScene({
       }
       controls.down = false;
     };
+    const onDoubleClick = (e) => {
+      updatePointer(e);
+      raycaster.setFromCamera(pointer, camera);
+      const hit = raycaster.intersectObjects([...kanbanMeshes.values()], true)[0]?.object;
+      let rack = hit;
+      while (rack && !rack.userData.id) rack = rack.parent;
+      const kanban = layoutRef.current.kanbans.find((item) => item.id === rack?.userData.id);
+      if (!kanban) return;
+      setSelected(kanban.id);
+      focusRef.current(kanban.x, kanban.z, 11);
+      setNotice(kanban.name + " · passe o cursor sobre uma caixa para ver o conteúdo");
+    };
+    renderer.domElement.addEventListener("dblclick", onDoubleClick);
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);
-    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
+    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; setHoveredItem(null); renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
     const clock = new THREE.Clock();
     const draw = (time) => {
       hoverFx.update(time);
@@ -276,6 +292,8 @@ export function useHangarScene({
     window.addEventListener("resize", resize);
     return () => {
       renderer.setAnimationLoop(null);
+      renderer.domElement.removeEventListener("dblclick", onDoubleClick);
+      setHoveredItem(null);
       hoverFx.dispose();
       window.removeEventListener("resize", resize);
       clearPreview();

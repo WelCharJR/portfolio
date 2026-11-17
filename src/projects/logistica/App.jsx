@@ -3,15 +3,34 @@ import * as THREE from "three";
 import "./logistica.css";
 
 const KEY = "logistica-hangar-v1";
+const ROWS = ["A", "B", "C", "D", "E", "F"];
+const COLS = 10;
 const pathTypes = { pedestrian: { label: "Estrada · circulação de pessoas", width: 2.4, color: "#78848a" }, logistics: { label: "Rota logística", width: .8, color: "#e2b644" } };
+const emptySlots = () => ROWS.flatMap(row => Array.from({length:COLS},(_,i)=>({id:`${row}-${i+1}`,code:"",name:"",qty:0,unit:"un"})));
+function makeSlots(items=[]) {
+  const slots=emptySlots();let next=0;
+  items.forEach(item=>{
+    let remaining=Number(item.qty)||10;
+    while(remaining>0&&next<slots.length){
+      const qty=Math.min(10,remaining);
+      slots[next]={...slots[next],code:item.code||"",name:item.name||"",qty,unit:item.unit||"un"};
+      remaining-=qty;next++;
+    }
+  });
+  return slots;
+}
 const initial = { kanbans: [
-  { id: "K-01", name: "Fixadores asa", x: -5, z: -2, items: [{ name: "Rebite NAS1097", qty: 240, unit: "un" }, { name: "Porca MS21042", qty: 80, unit: "un" }] },
-  { id: "K-02", name: "Montagem fuselagem", x: 1, z: 1, items: [{ name: "Parafuso NAS660", qty: 120, unit: "un" }] },
-  { id: "K-03", name: "Ferramentas", x: 6, z: -3, items: [{ name: "Broca 4.8 mm", qty: 12, unit: "un" }] },
-], areas: [], paths: [] };
+  { id:"K-01",name:"Fixadores asa",x:-12,z:-5,items:[{code:"NAS1097",name:"Rebite escareado",qty:240,unit:"un"},{code:"MS21042",name:"Porca autofrenante",qty:80,unit:"un"}] },
+  { id:"K-02",name:"Montagem fuselagem",x:0,z:4,items:[{code:"NAS660",name:"Parafuso estrutural",qty:120,unit:"un"}] },
+  { id:"K-03",name:"Ferramentas",x:12,z:-5,items:[{code:"DR-48",name:"Broca 4.8 mm",qty:12,unit:"un"}] },
+].map(k=>({...k,slots:makeSlots(k.items)})),areas:[],paths:[]};
 
 function loadLayout() {
-  try { return JSON.parse(localStorage.getItem(KEY)) || initial; } catch { return initial; }
+  try {
+    const saved=JSON.parse(localStorage.getItem(KEY));
+    if(!saved)return initial;
+    return {...saved,kanbans:(saved.kanbans||[]).map(k=>({...k,slots:Array.isArray(k.slots)?[...emptySlots(),...k.slots].slice(0,ROWS.length*COLS):makeSlots(k.items||[])})),areas:saved.areas||[],paths:saved.paths||[]};
+  } catch { return initial; }
 }
 
 export default function Logistica() {
@@ -35,6 +54,11 @@ export default function Logistica() {
   const [showGrid, setShowGrid] = useState(true);
   const layerRefs = useRef({});
   const zoomRef = useRef(() => {});
+  const focusRef = useRef(() => {});
+  const [query,setQuery]=useState("");
+  const [inspectedKanban,setInspectedKanban]=useState(null);
+  const [selectedSlotId,setSelectedSlotId]=useState(null);
+  const [focusedSlotId,setFocusedSlotId]=useState(null);
 
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify(layout)); }, [layout]);
 

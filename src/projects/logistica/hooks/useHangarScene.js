@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { buildHall } from "../scene/buildHall.js";
 import { buildKanban } from "../scene/buildKanban.js";
 import { buildAreaMesh, buildPath } from "../scene/buildDrawn.js";
 import { createPreview } from "../scene/createPreview.js";
+import { createHoverFx } from "../scene/createHoverFx.js";
 
 // Cena Three.js do hangar: câmera, luzes, galpão, kanbans, áreas, caminhos e mouse.
 // Só é recriada quando muda a posição dos kanbans, as áreas ou os caminhos (mesmas dependências de antes).
@@ -27,6 +28,10 @@ export function useHangarScene({
     setCursorWorld,
     setCursorScreen,
   } = setters;
+
+  // Sempre o layout mais recente (a cena não é recriada ao adicionar ou editar itens).
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
 
   useEffect(() => {
     const host = canvas.current;
@@ -128,6 +133,17 @@ export function useHangarScene({
     const clearPreview = preview.clear,
       refreshPreview = preview.refresh;
     clearPreviewRef.current = clearPreview;
+    // Puxada da caixa e porcas/parafusos no hover: só com mouse e respeitando "reduzir movimento".
+    const hasMatchMedia = typeof window.matchMedia === "function";
+    const media = (query) => hasMatchMedia && window.matchMedia(query).matches;
+    const hoverFx = createHoverFx(scene, {
+      enabled: !hasMatchMedia || media("(hover: hover)"),
+      reducedMotion: media("(prefers-reduced-motion: reduce)"),
+      isFilled: (kanbanId, slotId) =>
+        !!layoutRef.current.kanbans
+          .find((k) => k.id === kanbanId)
+          ?.slots?.find((slot) => slot.id === slotId)?.code,
+    });
     zoomRef.current = (amount) => {
       controls.radiusGoal = Math.max(9, Math.min(100, controls.radiusGoal + amount));
     };
@@ -136,6 +152,7 @@ export function useHangarScene({
       controls.radiusGoal = radius;
     };
     const onDown = (e) => {
+      hoverFx.hover(null, performance.now());
       controls.down = true;
       controls.lastX = e.clientX;
       controls.lastY = e.clientY;
@@ -182,9 +199,11 @@ export function useHangarScene({
           let owner = hit;
           while (owner && !owner.userData.slotId) owner = owner.parent;
           hoveredSlot = owner || null;
+          hoverFx.hover(hoveredSlot, performance.now());
           renderer.domElement.style.cursor = hoveredSlot ? "pointer" : "grab";
         }
         if (toolRef.current === "area" || toolRef.current === "path") {
+          hoverFx.hover(null, performance.now());
           const screen = updatePointer(e);
           setCursorScreen(screen);
           raycaster.setFromCamera(pointer, camera);
@@ -234,9 +253,10 @@ export function useHangarScene({
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);
-    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; renderer.domElement.style.cursor = "grab"; });
+    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
     const clock = new THREE.Clock();
-    const draw = () => {
+    const draw = (time) => {
+      hoverFx.update(time);
       const damping = 1 - Math.exp(-5 * clock.getDelta());
       controls.target.lerp(controls.targetGoal, damping);
       controls.radius += (controls.radiusGoal - controls.radius) * damping;
@@ -256,6 +276,7 @@ export function useHangarScene({
     window.addEventListener("resize", resize);
     return () => {
       renderer.setAnimationLoop(null);
+      hoverFx.dispose();
       window.removeEventListener("resize", resize);
       clearPreview();
       clearPreviewRef.current = () => {};

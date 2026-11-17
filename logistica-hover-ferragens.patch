@@ -1,0 +1,781 @@
+diff --git a/docs/superpowers/plans/2026-11-16-logistica-hover-ferragens.md b/docs/superpowers/plans/2026-11-16-logistica-hover-ferragens.md
+new file mode 100644
+index 0000000..a707d47
+--- /dev/null
++++ b/docs/superpowers/plans/2026-11-16-logistica-hover-ferragens.md
+@@ -0,0 +1,78 @@
++# Hover animado nas caixas da logística Implementation Plan
++
++> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
++
++**Goal:** Ao passar o mouse numa caixa ocupada do kanban 3D, ela desliza para frente e solta porcas e parafusos.
++
++**Architecture:** Matemática pura em `hoverMotion.js` (testável sem Three.js); efeito 3D em `createHoverFx.js` (pool de peças, tween por caixa); `useHangarScene.js` só detecta a caixa sob o mouse e chama o efeito no laço de render.
++
++**Tech Stack:** React, Three.js já existente, `node:test` (embutido no Node, sem dependências novas).
++
++**Spec:** `docs/superpowers/specs/2026-11-16-logistica-hover-ferragens-design.md`
++
++## Global Constraints
++
++- Não adicionar dependências.
++- Não alterar o layout salvo nem o `localStorage`.
++- Tempo vem do `setAnimationLoop` / `performance.now()`, nunca de `Date.now()`.
++- Não alterar o destaque existente (escala 1,08 e cursor) nem a animação da câmera.
++- Constantes do spec: puxada 0,28 (reduzida 0,12), 180 ms, `cubic-bezier(0.23, 1, 0.32, 1)`, 6 peças por disparo, pool de 30, pausa de 600 ms por caixa, vida 1,4 s com fade de 0,35 s, gravidade 9,8, restituição 0,4, passo máximo 50 ms.
++
++## Review Focus
++
++- Hover só com a ferramenta "Selecionar"; arrastar, trocar de ferramenta e `pointerleave` devolvem a caixa.
++- Caixa preenchida depois de editar no modal deve disparar (ocupação lida do layout atual).
++- Primeiro objeto sob o mouse que não é caixa (pilar) não dispara.
++- Passar o mouse varrendo a prateleira não ultrapassa o pool nem cria peças soltas.
++- Recriação da cena (mover kanban) não deixa peças ou caixas puxadas para trás; `dispose` limpa tudo.
++- `prefers-reduced-motion` e dispositivos sem hover.
++
++---
++
++### Task 1: Matemática pura do movimento
++
++**Files:**
++- Create: `src/projects/logistica/scene/hoverMotion.js`
++- Create: `src/projects/logistica/scene/hoverMotion.test.js`
++- Modify: `package.json` (script `test`)
++
++**Interfaces:**
++- Produces: `cubicBezier(x1,y1,x2,y2) -> (t)=>number`, `easeOut`, `createTween(value=0)`, `valueAt(tween, now)`, `retarget(tween, to, now, duration)`, `spawnBurst(rand, count) -> Piece[]`, `stepPiece(piece, dt, floorY)`, `pieceOpacity(piece)`, `MOTION` (constantes do spec).
++- Piece: `{ kind: "nut"|"bolt", x,y,z, vx,vy,vz, rx,ry,rz, sx,sy,sz, age, life }`.
++
++- [ ] Escrever os testes primeiro: curva (0→0, 1→1, monótona, `easeOut(0.25) > 0.5`); `valueAt` antes, no meio e depois do tween; `retarget` no meio parte do valor atual (sem salto) e reverte para 0 suavemente; `stepPiece` reduz `vy` em `g*dt` e integra posição e giro; quica no chão com `vy` invertido e multiplicado por 0,4 e amortece `vx/vz`; para quando a velocidade é pequena; `pieceOpacity` é 1 antes do fade, 0 na vida e linear no meio; `spawnBurst(()=>0, 6)` e `spawnBurst(()=>0.999, 6)` dão 3 porcas e 3 parafusos alternados, com velocidades nos limites do spec.
++- [ ] Rodar `node --test src/projects/logistica/scene/hoverMotion.test.js`. Expected: falha porque `hoverMotion.js` não existe.
++- [ ] Implementar o mínimo em `hoverMotion.js`.
++- [ ] Rodar o mesmo comando. Expected: todos os testes passam, sem avisos.
++- [ ] Adicionar `"test": "node --test src/projects/logistica/scene/hoverMotion.test.js src/projects/logistica/scene/createHoverFx.test.js"` em `package.json` quando o segundo arquivo existir (Task 2).
++- [ ] Commit.
++
++### Task 2: Efeito 3D com pool de peças
++
++**Files:**
++- Create: `src/projects/logistica/scene/createHoverFx.js`
++- Create: `src/projects/logistica/scene/createHoverFx.test.js`
++- Modify: `package.json` (script `test`)
++
++**Interfaces:**
++- Consumes: tudo de `hoverMotion.js`.
++- Produces: `createHoverFx(scene, { isFilled(kanbanId, slotId), reducedMotion, enabled }) -> { hover(bin|null, now), update(now), dispose() }`. `bin` é o `THREE.Group` com `userData.slotId` e `userData.kanbanId` criado por `buildKanban`.
++
++- [ ] Escrever os testes primeiro, com Three.js real (`THREE.Scene`, `THREE.Group`), sem renderizador: `hover` seguido de `update` após 180 ms deixa `bin.position.z = base + 0.28`; sair devolve exatamente a `base` e remove o estado; trocar de caixa no meio retarget sem salto; caixa ocupada ativa 6 peças visíveis e caixa vazia ativa 0; `reducedMotion` puxa 0,12 e ativa 0 peças; `enabled: false` não altera nada nem cria objetos na cena; pausa de 600 ms por caixa (segundo disparo antes disso não cria peças); com o pool esgotado (5 disparos em caixas diferentes) o sexto é ignorado; peças ativas ficam invisíveis e voltam ao pool depois da vida; `dispose` remove os objetos da cena e devolve caixas puxadas à posição base.
++- [ ] Rodar `node --test src/projects/logistica/scene/createHoverFx.test.js`. Expected: falha porque `createHoverFx.js` não existe.
++- [ ] Implementar o mínimo em `createHoverFx.js` (geometrias e materiais compartilhados, material próprio por peça para o fade, objetos marcados com `userData.fx = true`).
++- [ ] Rodar `npm test`. Expected: todos os testes das Tasks 1 e 2 passam.
++- [ ] Commit.
++
++### Task 3: Integração na cena e verificação
++
++**Files:**
++- Modify: `src/projects/logistica/hooks/useHangarScene.js`
++
++**Interfaces:**
++- Consumes: `createHoverFx` da Task 2; `layout` do hook (via `useRef` atualizado a cada render para a ocupação).
++
++- [ ] Em `useHangarScene`: `layoutRef`; criar `hoverFx` na cena com `enabled` (hover disponível) e `reducedMotion` lidos de `matchMedia` quando existir; reaproveitar o `hoveredSlot` já calculado em `onMove` (ferramenta "select", sem botão pressionado) e passá-lo a `hoverFx.hover`; `hover(null)` ao entrar em área/caminho, em `onDown` e em `pointerleave`; `draw(time)` chama `hoverFx.update(time)`; `dispose` na limpeza.
++- [ ] Teste de integração em DOM simulado (fora do repo, `/tmp/harness`): estender o harness com `matchMedia` e `setAnimationLoop` controláveis e passos de hover. Expected: nos passos anteriores o HTML, o `localStorage` e a câmera continuam idênticos à versão anterior (ignorando objetos `userData.fx`); no passo de hover, a caixa sob o mouse avança 0,28, mantém o destaque de 1,08 e há 6 peças visíveis; sob `area`/`path`, durante arrasto e depois de `pointerleave`, a caixa volta e não há peças novas; com `reducedMotion`, avança 0,12 e não há peças.
++- [ ] Rodar `npm test`, `npm run build` e o lint `no-undef`/`no-unused-vars`. Expected: tudo verde; o único apontamento do lint é o `side` já existente em `buildDrawn.js`.
++- [ ] Commit.
+diff --git a/docs/superpowers/specs/2026-11-16-logistica-hover-ferragens-design.md b/docs/superpowers/specs/2026-11-16-logistica-hover-ferragens-design.md
+new file mode 100644
+index 0000000..ea13396
+--- /dev/null
++++ b/docs/superpowers/specs/2026-11-16-logistica-hover-ferragens-design.md
+@@ -0,0 +1,42 @@
++# Hover animado nas caixas do kanban (logística)
++
++## Intenção
++
++Ao passar o mouse sobre uma caixa ocupada da estante 3D, ela desliza um pouco para frente e solta porcas e parafusos. O objetivo é deixar a visualização do hangar mais viva e divertida na demonstração do portfólio.
++
++## Abordagens
++
++- **Peças 3D com física simples (escolhida):** malhas pequenas reaproveitadas de um pool, movidas no próprio laço de render. Sem dependências novas.
++- **Biblioteca de partículas:** descartada; traria uma dependência para apenas 6 peças.
++- **CSS/DOM:** não serve; a cena é um canvas WebGL.
++
++## Comportamento
++
++- Só reage com a ferramenta "Selecionar", sem arrastar nem orbitar. Ao começar a arrastar, trocar de ferramenta ou o mouse sair do canvas, a caixa volta.
++- **Convive com o destaque que já existe:** a caixa sob o mouse continua crescendo 1,08× e o cursor continua virando mão. A puxada e as peças são acrescentadas a isso, e a detecção reaproveita o `hoveredSlot` que `onMove` já calcula, sem segundo raycast.
++- Só caixas ocupadas (com código) reagem. A ocupação é lida do layout mais recente, não da cena, porque adicionar ou editar itens não recria a cena.
++- Se o primeiro objeto sob o mouse não for uma caixa (por exemplo, um pilar da estante), nada reage.
++- **Puxada:** a caixa avança 0,28 em z (frente) em 180 ms com `cubic-bezier(0.23, 1, 0.32, 1)`. Ao mudar o alvo (entrar, sair ou trocar de caixa no meio do movimento), a animação parte do valor atual, sem salto.
++- **Peças:** 6 por disparo (3 porcas hexagonais e 3 parafusos), maiores que o real para aparecerem com o zoom normal (porca com raio 0,09). Nascem na borda frontal superior da caixa puxada, sobem, giram, caem com gravidade (9,8), quicam uma vez no chão (restituição 0,4) e somem com fade nos últimos 0,35 s de uma vida de 1,4 s.
++- **Controle de excesso:** cada caixa tem pausa de 600 ms entre disparos; há um pool fixo de 30 peças e, sem 6 livres, o disparo é ignorado.
++- **Acessibilidade e dispositivos:** com `prefers-reduced-motion: reduce` a caixa se move 0,12 e não há peças. Sem hover (toque), o efeito fica desligado.
++- O tempo vem do `setAnimationLoop` do renderer (mesma escala de `performance.now()`); o passo de tempo é limitado a 50 ms para abas que voltam do segundo plano.
++
++## Limites
++
++- Não altera dados do layout nem o `localStorage`.
++- Não corrige a cor da caixa no 3D após editar um item (problema anterior, fora deste escopo).
++- As preferências do sistema são lidas quando a cena é criada, não acompanham mudanças durante a sessão.
++
++## Arquivos previstos
++
++- `src/projects/logistica/scene/hoverMotion.js`: matemática pura (curva, tween com retarget, física das peças, disparo), sem Three.js.
++- `src/projects/logistica/scene/createHoverFx.js`: efeito 3D (pool de peças, caixas puxadas, `hover`, `update`, `dispose`).
++- `src/projects/logistica/hooks/useHangarScene.js`: detecção da caixa sob o mouse, ligação ao laço de render e limpeza.
++- Testes ao lado dos módulos, com `node --test`.
++
++## Verificação
++
++- Testes automatizados da matemática e do efeito 3D com Three.js real, sem renderizador.
++- Teste de integração em DOM simulado (fora do repositório) comparando com a versão anterior e exercitando hover, arrasto, ferramentas e saída do canvas.
++- `npm run build` e lint de variáveis indefinidas.
+diff --git a/package.json b/package.json
+index 90e65d5..8ca0400 100644
+--- a/package.json
++++ b/package.json
+@@ -6,7 +6,8 @@
+   "scripts": {
+     "dev": "vite",
+     "build": "vite build",
+-    "preview": "vite preview"
++    "preview": "vite preview",
++    "test": "node --test src/projects/logistica/scene/hoverMotion.test.js src/projects/logistica/scene/createHoverFx.test.js"
+   },
+   "dependencies": {
+     "framer-motion": "^11.2.10",
+diff --git a/src/projects/logistica/hooks/useHangarScene.js b/src/projects/logistica/hooks/useHangarScene.js
+index ad1695c..97edafa 100644
+--- a/src/projects/logistica/hooks/useHangarScene.js
++++ b/src/projects/logistica/hooks/useHangarScene.js
+@@ -1,9 +1,10 @@
+-import { useEffect } from "react";
++import { useEffect, useRef } from "react";
+ import * as THREE from "three";
+ import { buildHall } from "../scene/buildHall.js";
+ import { buildKanban } from "../scene/buildKanban.js";
+ import { buildAreaMesh, buildPath } from "../scene/buildDrawn.js";
+ import { createPreview } from "../scene/createPreview.js";
++import { createHoverFx } from "../scene/createHoverFx.js";
+ 
+ // Cena Three.js do hangar: câmera, luzes, galpão, kanbans, áreas, caminhos e mouse.
+ // Só é recriada quando muda a posição dos kanbans, as áreas ou os caminhos (mesmas dependências de antes).
+@@ -28,6 +29,10 @@ export function useHangarScene({
+     setCursorScreen,
+   } = setters;
+ 
++  // Sempre o layout mais recente (a cena não é recriada ao adicionar ou editar itens).
++  const layoutRef = useRef(layout);
++  layoutRef.current = layout;
++
+   useEffect(() => {
+     const host = canvas.current;
+     const scene = new THREE.Scene();
+@@ -128,6 +133,17 @@ export function useHangarScene({
+     const clearPreview = preview.clear,
+       refreshPreview = preview.refresh;
+     clearPreviewRef.current = clearPreview;
++    // Puxada da caixa e porcas/parafusos no hover: só com mouse e respeitando "reduzir movimento".
++    const hasMatchMedia = typeof window.matchMedia === "function";
++    const media = (query) => hasMatchMedia && window.matchMedia(query).matches;
++    const hoverFx = createHoverFx(scene, {
++      enabled: !hasMatchMedia || media("(hover: hover)"),
++      reducedMotion: media("(prefers-reduced-motion: reduce)"),
++      isFilled: (kanbanId, slotId) =>
++        !!layoutRef.current.kanbans
++          .find((k) => k.id === kanbanId)
++          ?.slots?.find((slot) => slot.id === slotId)?.code,
++    });
+     zoomRef.current = (amount) => {
+       controls.radiusGoal = Math.max(9, Math.min(100, controls.radiusGoal + amount));
+     };
+@@ -136,6 +152,7 @@ export function useHangarScene({
+       controls.radiusGoal = radius;
+     };
+     const onDown = (e) => {
++      hoverFx.hover(null, performance.now());
+       controls.down = true;
+       controls.lastX = e.clientX;
+       controls.lastY = e.clientY;
+@@ -182,9 +199,11 @@ export function useHangarScene({
+           let owner = hit;
+           while (owner && !owner.userData.slotId) owner = owner.parent;
+           hoveredSlot = owner || null;
++          hoverFx.hover(hoveredSlot, performance.now());
+           renderer.domElement.style.cursor = hoveredSlot ? "pointer" : "grab";
+         }
+         if (toolRef.current === "area" || toolRef.current === "path") {
++          hoverFx.hover(null, performance.now());
+           const screen = updatePointer(e);
+           setCursorScreen(screen);
+           raycaster.setFromCamera(pointer, camera);
+@@ -234,9 +253,10 @@ export function useHangarScene({
+     renderer.domElement.addEventListener("pointerdown", onDown);
+     renderer.domElement.addEventListener("pointermove", onMove);
+     renderer.domElement.addEventListener("pointerup", onUp);
+-    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; renderer.domElement.style.cursor = "grab"; });
++    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
+     const clock = new THREE.Clock();
+-    const draw = () => {
++    const draw = (time) => {
++      hoverFx.update(time);
+       const damping = 1 - Math.exp(-5 * clock.getDelta());
+       controls.target.lerp(controls.targetGoal, damping);
+       controls.radius += (controls.radiusGoal - controls.radius) * damping;
+@@ -256,6 +276,7 @@ export function useHangarScene({
+     window.addEventListener("resize", resize);
+     return () => {
+       renderer.setAnimationLoop(null);
++      hoverFx.dispose();
+       window.removeEventListener("resize", resize);
+       clearPreview();
+       clearPreviewRef.current = () => {};
+diff --git a/src/projects/logistica/scene/createHoverFx.js b/src/projects/logistica/scene/createHoverFx.js
+new file mode 100644
+index 0000000..638fd05
+--- /dev/null
++++ b/src/projects/logistica/scene/createHoverFx.js
+@@ -0,0 +1,144 @@
++import * as THREE from "three";
++import {
++  MOTION,
++  createTween,
++  valueAt,
++  retarget,
++  spawnBurst,
++  stepPiece,
++  pieceOpacity,
++} from "./hoverMotion.js";
++
++const noop = { hover() {}, update() {}, dispose() {} };
++
++// Efeito de hover das caixas: a caixa sob o mouse desliza para frente e solta porcas e parafusos.
++//   hover(bin | null, now)  -> define qual caixa está sob o mouse (now em ms, como o rAF)
++//   update(now)             -> chamado a cada frame: move as caixas e as peças
++//   dispose()               -> remove tudo da cena e devolve as caixas à posição original
++// `bin` é o grupo criado em buildKanban (userData.kanbanId / userData.slotId).
++export function createHoverFx(
++  scene,
++  { isFilled = () => true, reducedMotion = false, enabled = true, rand = Math.random } = {},
++) {
++  if (!enabled) return noop;
++
++  const distance = reducedMotion ? MOTION.reducedPullDistance : MOTION.pullDistance;
++  const bins = new Map(); // caixa -> { tween, base }  (só enquanto está fora do repouso)
++  const lastBurst = new WeakMap();
++  let current = null;
++  let last = null;
++
++  // ---- pool de peças (criadas uma vez, reaproveitadas) ----
++  const nutGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.05, 6);
++  const headGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.04, 6);
++  const shaftGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.2, 8);
++  shaftGeo.translate(0, -0.12, 0);
++  const geometries = [nutGeo, headGeo, shaftGeo];
++
++  const makeSlot = (kind) => {
++    const mat = new THREE.MeshStandardMaterial({
++      color: kind === "nut" ? "#c4cad2" : "#8f98a3",
++      metalness: 0.8,
++      roughness: 0.35,
++      transparent: true,
++    });
++    let obj;
++    if (kind === "nut") {
++      obj = new THREE.Mesh(nutGeo, mat);
++    } else {
++      obj = new THREE.Group();
++      obj.add(new THREE.Mesh(headGeo, mat), new THREE.Mesh(shaftGeo, mat));
++    }
++    obj.userData.fx = true;
++    obj.visible = false;
++    scene.add(obj);
++    return { obj, mat, p: null };
++  };
++  const half = MOTION.poolSize / 2;
++  const pool = {
++    nut: Array.from({ length: half }, () => makeSlot("nut")),
++    bolt: Array.from({ length: half }, () => makeSlot("bolt")),
++  };
++  const slots = [...pool.nut, ...pool.bolt];
++
++  const sync = (slot) => {
++    const p = slot.p;
++    slot.obj.position.set(p.x, p.y, p.z);
++    slot.obj.rotation.set(p.rx, p.ry, p.rz);
++    slot.mat.opacity = pieceOpacity(p);
++  };
++
++  const origin = new THREE.Vector3();
++  const burst = (bin, now) => {
++    if (now - (lastBurst.get(bin) ?? -Infinity) < MOTION.cooldownMs) return;
++    const pieces = spawnBurst(rand, MOTION.burstCount);
++    const free = { nut: pool.nut.filter((s) => !s.p), bolt: pool.bolt.filter((s) => !s.p) };
++    const need = { nut: 0, bolt: 0 };
++    pieces.forEach((p) => need[p.kind]++);
++    if (free.nut.length < need.nut || free.bolt.length < need.bolt) return;
++    bin.getWorldPosition(origin);
++    pieces.forEach((p) => {
++      const slot = free[p.kind].shift();
++      p.x = origin.x + (rand() - 0.5) * 0.2;
++      p.y = origin.y + 0.22;
++      p.z = origin.z + distance + 0.3;
++      slot.p = p;
++      slot.obj.visible = true;
++      sync(slot);
++    });
++    lastBurst.set(bin, now);
++  };
++
++  return {
++    hover(bin, now) {
++      if (bin === current) return;
++      if (bin && !isFilled(bin.userData.kanbanId, bin.userData.slotId)) bin = null;
++      if (bin === current) return;
++      const leaving = bins.get(current);
++      if (leaving) retarget(leaving.tween, 0, now, MOTION.pullMs);
++      current = bin;
++      if (!bin) return;
++      let state = bins.get(bin);
++      if (!state) {
++        state = { tween: createTween(0), base: bin.position.z };
++        bins.set(bin, state);
++      }
++      retarget(state.tween, 1, now, MOTION.pullMs);
++      if (!reducedMotion) burst(bin, now);
++    },
++
++    update(now) {
++      for (const [bin, state] of bins) {
++        const v = valueAt(state.tween, now);
++        bin.position.z = state.base + v * distance;
++        if (state.tween.to === 0 && v === 0) {
++          bin.position.z = state.base;
++          bins.delete(bin);
++        }
++      }
++      const dt = last === null ? 0 : Math.min(MOTION.maxDt, Math.max(0, (now - last) / 1000));
++      last = now;
++      for (const slot of slots) {
++        if (!slot.p) continue;
++        stepPiece(slot.p, dt, MOTION.floorY);
++        if (slot.p.age >= slot.p.life) {
++          slot.p = null;
++          slot.obj.visible = false;
++        } else {
++          sync(slot);
++        }
++      }
++    },
++
++    dispose() {
++      for (const [bin, state] of bins) bin.position.z = state.base;
++      bins.clear();
++      current = null;
++      slots.forEach((s) => {
++        scene.remove(s.obj);
++        s.mat.dispose();
++      });
++      geometries.forEach((g) => g.dispose());
++    },
++  };
++}
+diff --git a/src/projects/logistica/scene/createHoverFx.test.js b/src/projects/logistica/scene/createHoverFx.test.js
+new file mode 100644
+index 0000000..11147c1
+--- /dev/null
++++ b/src/projects/logistica/scene/createHoverFx.test.js
+@@ -0,0 +1,162 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import * as THREE from "three";
++import { createHoverFx } from "./createHoverFx.js";
++import { MOTION } from "./hoverMotion.js";
++
++const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) <= eps, `${a} ≉ ${b}`);
++const rand = () => 0.5;
++const BASE = 0.25;
++
++function setup(options = {}) {
++  const scene = new THREE.Scene();
++  const makeBin = (slotId = "A-1", x = 0) => {
++    const bin = new THREE.Group();
++    bin.position.set(x, 1, BASE);
++    bin.userData.kanbanId = "K-01";
++    bin.userData.slotId = slotId;
++    scene.add(bin);
++    return bin;
++  };
++  const fx = createHoverFx(scene, { isFilled: () => true, rand, ...options });
++  const visible = () => scene.children.filter((o) => o.userData.fx && o.visible).length;
++  const fxObjects = () => scene.children.filter((o) => o.userData.fx).length;
++  // avança o relógio em passos de 20 ms, como o laço de render faria
++  const run = (from, to) => { for (let t = from; t <= to; t += 20) fx.update(t); };
++  return { scene, fx, makeBin, visible, fxObjects, run };
++}
++
++test("hover puxa a caixa 0,28 para frente em 180 ms", () => {
++  const { fx, makeBin } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0);
++  fx.update(0);
++  assert.equal(bin.position.z, BASE);
++  fx.update(180);
++  near(bin.position.z, BASE + MOTION.pullDistance);
++});
++
++test("sair devolve exatamente à posição original", () => {
++  const { fx, makeBin } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0); fx.update(0); fx.update(180);
++  fx.hover(null, 200); fx.update(200); fx.update(380);
++  assert.equal(bin.position.z, BASE);
++});
++
++test("trocar de caixa no meio do movimento não dá salto", () => {
++  const { fx, makeBin } = setup();
++  const a = makeBin("A-1", 0), b = makeBin("A-2", 1);
++  fx.hover(a, 0); fx.update(0); fx.update(90);
++  const zA = a.position.z;
++  fx.hover(b, 90); fx.update(90);
++  near(a.position.z, zA, 1e-9);
++  assert.equal(b.position.z, BASE);
++  fx.update(270);
++  assert.equal(a.position.z, BASE);
++  near(b.position.z, BASE + MOTION.pullDistance);
++});
++
++test("caixa ocupada solta 6 peças (3 porcas e 3 parafusos), sem repetir no mesmo hover", () => {
++  const { fx, makeBin, visible } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0);
++  assert.equal(visible(), 6);
++  fx.hover(bin, 10);
++  assert.equal(visible(), 6);
++});
++
++test("caixa vazia não puxa e não solta nada", () => {
++  const { fx, makeBin, visible } = setup({ isFilled: () => false });
++  const bin = makeBin();
++  fx.hover(bin, 0); fx.update(0); fx.update(200);
++  assert.equal(bin.position.z, BASE);
++  assert.equal(visible(), 0);
++});
++
++test("reducedMotion: puxada menor e nenhuma peça", () => {
++  const { fx, makeBin, visible } = setup({ reducedMotion: true });
++  const bin = makeBin();
++  fx.hover(bin, 0); fx.update(0); fx.update(180);
++  near(bin.position.z, BASE + MOTION.reducedPullDistance);
++  assert.equal(visible(), 0);
++});
++
++test("enabled:false não cria objetos nem mexe na caixa", () => {
++  const { scene, fx, makeBin } = setup({ enabled: false });
++  const bin = makeBin();
++  const before = scene.children.length;
++  fx.hover(bin, 0); fx.update(0); fx.update(200); fx.hover(null, 300); fx.dispose();
++  assert.equal(scene.children.length, before);
++  assert.equal(bin.position.z, BASE);
++});
++
++test("pausa de 600 ms por caixa entre disparos", () => {
++  const { fx, makeBin, visible } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0);
++  fx.hover(null, 100);
++  fx.hover(bin, 200);
++  assert.equal(visible(), 6);
++  fx.hover(null, 300);
++  fx.hover(bin, 700);
++  assert.equal(visible(), 12);
++});
++
++test("pool de 30 peças: o sexto disparo simultâneo é ignorado", () => {
++  const { fx, makeBin, visible, fxObjects } = setup();
++  const bins = Array.from({ length: 6 }, (_, i) => makeBin(`A-${i + 1}`, i));
++  bins.forEach((bin, i) => fx.hover(bin, i * 10));
++  assert.equal(visible(), 30);
++  assert.equal(fxObjects(), 30);
++});
++
++test("peças voltam ao pool depois da vida e podem ser reutilizadas", () => {
++  const { fx, makeBin, visible, fxObjects, run } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0);
++  run(0, 1600);
++  assert.equal(visible(), 0);
++  fx.hover(null, 1700);
++  fx.hover(bin, 2000);
++  assert.equal(visible(), 6);
++  assert.equal(fxObjects(), 30);
++});
++
++test("peças somem com fade no fim da vida", () => {
++  const { scene, fx, makeBin, run } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0);
++  run(0, 1300);
++  const opacities = [];
++  scene.children.filter((o) => o.userData.fx && o.visible).forEach((o) =>
++    o.traverse((c) => { if (c.isMesh) opacities.push(c.material.opacity); }));
++  assert.ok(opacities.length > 0);
++  assert.ok(opacities.every((v) => v > 0 && v < 1), `opacidades: ${opacities}`);
++});
++
++test("peças nascem acima da caixa e caem com a gravidade", () => {
++  const { scene, fx, makeBin, run } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0);
++  const first = scene.children.find((o) => o.userData.fx && o.visible);
++  fx.update(0);
++  assert.ok(first.position.y > 1.1, `y inicial ${first.position.y}`);
++  run(20, 1000);
++  assert.ok(first.position.y < 0.5, `y depois de cair ${first.position.y}`);
++});
++
++test("dispose remove os objetos e devolve a caixa à posição original", () => {
++  const { fx, makeBin, fxObjects } = setup();
++  const bin = makeBin();
++  fx.hover(bin, 0); fx.update(0); fx.update(100);
++  assert.notEqual(bin.position.z, BASE);
++  fx.dispose();
++  assert.equal(fxObjects(), 0);
++  assert.equal(bin.position.z, BASE);
++});
++
++test("hover(null) sem nada em andamento não quebra", () => {
++  const { fx } = setup();
++  assert.doesNotThrow(() => { fx.hover(null, 0); fx.update(0); fx.dispose(); });
++});
+diff --git a/src/projects/logistica/scene/hoverMotion.js b/src/projects/logistica/scene/hoverMotion.js
+new file mode 100644
+index 0000000..5277b7d
+--- /dev/null
++++ b/src/projects/logistica/scene/hoverMotion.js
+@@ -0,0 +1,106 @@
++// Matemática do hover das caixas: curva, tween com retarget e física das peças.
++// Sem Three.js, para poder ser testada direto no Node.
++
++export const MOTION = {
++  pullDistance: 0.28,
++  reducedPullDistance: 0.12,
++  pullMs: 180,
++  cooldownMs: 600,
++  burstCount: 6,
++  poolSize: 30,
++  life: 1.4,
++  fade: 0.35,
++  gravity: 9.8,
++  restitution: 0.4,
++  bounceDamping: 0.6,
++  restSpeed: 0.8,
++  floorY: 0.04,
++  maxDt: 0.05,
++};
++
++// Equivalente ao cubic-bezier() do CSS: recebe o tempo (0..1) e devolve o progresso (0..1).
++export function cubicBezier(x1, y1, x2, y2) {
++  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
++  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
++  const sampleX = (s) => ((ax * s + bx) * s + cx) * s;
++  const sampleY = (s) => ((ay * s + by) * s + cy) * s;
++  const slopeX = (s) => (3 * ax * s + 2 * bx) * s + cx;
++  return (t) => {
++    if (t <= 0) return 0;
++    if (t >= 1) return 1;
++    let s = t;
++    for (let i = 0; i < 8; i++) {
++      const err = sampleX(s) - t;
++      if (Math.abs(err) < 1e-7) return sampleY(s);
++      const slope = slopeX(s);
++      if (Math.abs(slope) < 1e-6) break;
++      s -= err / slope;
++    }
++    let lo = 0, hi = 1;
++    s = t;
++    for (let i = 0; i < 40; i++) {
++      const x = sampleX(s);
++      if (Math.abs(x - t) < 1e-7) break;
++      if (t > x) lo = s; else hi = s;
++      s = (lo + hi) / 2;
++    }
++    return sampleY(s);
++  };
++}
++
++export const easeOut = cubicBezier(0.23, 1, 0.32, 1);
++
++// Tween que pode ser redirecionado a qualquer momento partindo do valor atual.
++export const createTween = (value = 0) => ({ from: value, to: value, start: 0, duration: 0 });
++
++export function valueAt(tween, now) {
++  if (tween.duration <= 0 || now >= tween.start + tween.duration) return tween.to;
++  if (now <= tween.start) return tween.from;
++  return tween.from + (tween.to - tween.from) * easeOut((now - tween.start) / tween.duration);
++}
++
++export function retarget(tween, to, now, duration) {
++  tween.from = valueAt(tween, now);
++  tween.to = to;
++  tween.start = now;
++  tween.duration = duration;
++}
++
++// Peças de um disparo: porcas e parafusos alternados, com velocidades sorteadas por rand() em [0,1).
++export function spawnBurst(rand, count) {
++  const r = (min, max) => min + (max - min) * rand();
++  return Array.from({ length: count }, (_, i) => ({
++    kind: i % 2 === 0 ? "nut" : "bolt",
++    x: 0, y: 0, z: 0,
++    vx: r(-0.9, 0.9), vy: r(2, 3.2), vz: r(0.9, 1.7),
++    rx: 0, ry: 0, rz: 0,
++    sx: r(-10, 10), sy: r(-10, 10), sz: r(-10, 10),
++    age: 0,
++    life: MOTION.life,
++  }));
++}
++
++// Um passo de física: gravidade, movimento, giro e um quique no chão que acaba parando.
++export function stepPiece(p, dt, floorY) {
++  p.age += dt;
++  p.vy -= MOTION.gravity * dt;
++  p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
++  p.rx += p.sx * dt; p.ry += p.sy * dt; p.rz += p.sz * dt;
++  if (p.y <= floorY && p.vy < 0) {
++    p.y = floorY;
++    p.vy = -p.vy * MOTION.restitution;
++    p.vx *= MOTION.bounceDamping;
++    p.vz *= MOTION.bounceDamping;
++    if (p.vy < MOTION.restSpeed) {
++      p.vy = 0; p.vx = 0; p.vz = 0;
++      p.sx = 0; p.sy = 0; p.sz = 0;
++    }
++  }
++}
++
++export function pieceOpacity(p) {
++  const fadeStart = p.life - MOTION.fade;
++  if (p.age <= fadeStart) return 1;
++  if (p.age >= p.life) return 0;
++  return (p.life - p.age) / MOTION.fade;
++}
+diff --git a/src/projects/logistica/scene/hoverMotion.test.js b/src/projects/logistica/scene/hoverMotion.test.js
+new file mode 100644
+index 0000000..a4d2b28
+--- /dev/null
++++ b/src/projects/logistica/scene/hoverMotion.test.js
+@@ -0,0 +1,113 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import {
++  cubicBezier,
++  easeOut,
++  createTween,
++  valueAt,
++  retarget,
++  spawnBurst,
++  stepPiece,
++  pieceOpacity,
++  MOTION,
++} from "./hoverMotion.js";
++
++const near = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) <= eps, `${a} ≉ ${b}`);
++const piece = (over = {}) => ({
++  kind: "nut", x: 0, y: 5, z: 0, vx: 0, vy: 0, vz: 0,
++  rx: 0, ry: 0, rz: 0, sx: 0, sy: 0, sz: 0, age: 0, life: 1.4, ...over,
++});
++
++test("constantes seguem o design", () => {
++  assert.equal(MOTION.pullDistance, 0.28);
++  assert.equal(MOTION.reducedPullDistance, 0.12);
++  assert.equal(MOTION.pullMs, 180);
++  assert.equal(MOTION.cooldownMs, 600);
++  assert.equal(MOTION.poolSize, 30);
++  assert.equal(MOTION.burstCount, 6);
++});
++
++test("cubicBezier começa em 0, termina em 1 e nunca recua", () => {
++  const f = cubicBezier(0.23, 1, 0.32, 1);
++  near(f(0), 0);
++  near(f(1), 1);
++  let prev = 0;
++  for (let i = 1; i <= 100; i++) {
++    const v = f(i / 100);
++    assert.ok(v >= prev - 1e-9, `recuou em ${i / 100}`);
++    prev = v;
++  }
++});
++
++test("easeOut é forte no começo (25% do tempo já passa de 50% do caminho)", () => {
++  assert.ok(easeOut(0.25) > 0.5);
++});
++
++test("valueAt: antes do início fica no valor inicial, depois do fim no final", () => {
++  const t = createTween(0);
++  retarget(t, 1, 100, 180);
++  assert.equal(valueAt(t, 50), 0);
++  assert.equal(valueAt(t, 100), 0);
++  assert.equal(valueAt(t, 280), 1);
++  assert.equal(valueAt(t, 999), 1);
++  const mid = valueAt(t, 190);
++  assert.ok(mid > 0.5 && mid < 1, `meio = ${mid}`);
++});
++
++test("retarget no meio do movimento parte do valor atual, sem salto", () => {
++  const t = createTween(0);
++  retarget(t, 1, 0, 180);
++  const before = valueAt(t, 60);
++  retarget(t, 0, 60, 180);
++  near(valueAt(t, 60), before, 1e-9);
++  assert.equal(valueAt(t, 240), 0);
++});
++
++test("spawnBurst: 3 porcas e 3 parafusos alternados, nos limites do design", () => {
++  const lo = spawnBurst(() => 0, 6);
++  const hi = spawnBurst(() => 0.999999, 6);
++  assert.deepEqual(lo.map((p) => p.kind), ["nut", "bolt", "nut", "bolt", "nut", "bolt"]);
++  assert.equal(hi.length, 6);
++  near(lo[0].vy, 2); near(hi[0].vy, 3.2, 1e-3);
++  near(lo[0].vz, 0.9); near(hi[0].vz, 1.7, 1e-3);
++  near(lo[0].vx, -0.9); near(hi[0].vx, 0.9, 1e-3);
++  near(lo[0].sx, -10); near(hi[0].sx, 10, 1e-3);
++  assert.equal(lo[0].life, 1.4);
++  assert.equal(lo[0].age, 0);
++});
++
++test("stepPiece aplica gravidade, move e gira", () => {
++  const p = piece({ vx: 1, sx: 2 });
++  stepPiece(p, 0.1, 0.04);
++  near(p.vy, -0.98, 1e-9);
++  assert.ok(p.y < 5);
++  near(p.x, 0.1, 1e-9);
++  near(p.rx, 0.2, 1e-9);
++  near(p.age, 0.1, 1e-9);
++});
++
++test("stepPiece quica no chão com restituição 0,4 e amortece o deslize", () => {
++  const p = piece({ y: 0.1, vy: -5, vx: 1, vz: 1 });
++  stepPiece(p, 0.05, 0.04);
++  assert.equal(p.y, 0.04);
++  near(p.vy, (5 + 9.8 * 0.05) * 0.4, 1e-9);
++  assert.ok(p.vx < 1 && p.vz < 1);
++});
++
++test("stepPiece para de vez no chão (sem tremer)", () => {
++  const p = piece({ y: 0.04, vy: 0, vx: 0.3, sx: 4 });
++  for (let i = 0; i < 40; i++) stepPiece(p, 0.016, 0.04);
++  assert.equal(p.y, 0.04);
++  assert.equal(p.vy, 0);
++  assert.equal(p.vx, 0);
++  assert.equal(p.sx, 0);
++});
++
++test("pieceOpacity: 1 antes do fade, linear no fade, 0 na vida", () => {
++  assert.equal(pieceOpacity(piece({ age: 0 })), 1);
++  assert.equal(pieceOpacity(piece({ age: 1 })), 1);
++  near(pieceOpacity(piece({ age: 1.05 })), 1, 1e-9); // limite do fade: contínuo, sem salto
++  near(pieceOpacity(piece({ age: 1.225 })), 0.5, 1e-9);
++  assert.equal(pieceOpacity(piece({ age: 1.4 })), 0);
++  assert.equal(pieceOpacity(piece({ age: 2 })), 0);
++});

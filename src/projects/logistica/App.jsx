@@ -107,6 +107,16 @@ export default function Logistica() {
       ),
     }));
   };
+  const addItem = (item) => {
+    const kanban = layout.kanbans.find((k) => k.id === item.kanbanId);
+    const slot = kanban?.slots.find((s) => !s.code);
+    if (!slot) { setNotice("Kanban sem caixas livres."); return; }
+    setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id !== kanban.id ? k : { ...k, slots: k.slots.map((s) => s.id !== slot.id ? s : { ...s, code: item.code, name: item.name, qty: item.qty, unit: item.unit }) }) }));
+    setNotice(item.code + " adicionado em " + kanban.id + " · " + slot.id);
+  };
+  const removeItem = (kanbanId, slotId) => {
+    setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id !== kanbanId ? k : { ...k, slots: k.slots.map((s) => s.id !== slotId ? s : { ...s, code: "", name: "", qty: 0, unit: "un" }) }) }));
+  };
   const inspected = layout.kanbans.find((k) => k.id === inspectedKanban);
   const chooseTool = (next) => {
     toolRef.current = next;
@@ -237,6 +247,8 @@ export default function Logistica() {
           query={query}
           selectedSlotId={selectedSlotId}
           onQuery={setQuery}
+          onAddItem={addItem}
+          onRemoveItem={removeItem}
           onSelect={setSelected}
           onOpenKanban={openKanban}
           onNotice={setNotice}

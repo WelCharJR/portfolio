@@ -43,4 +43,3 @@
 
 .kanban-rename{display:grid;gap:5px;color:#cbd3cd;font-size:11px}.kanban-rename input{width:100%;box-sizing:border-box;padding:7px;background:#11191c;color:#e9eee9;border:1px solid #536366;border-radius:4px}.inventory-manager select{font-size:11px}
 
-.log-item-tooltip{position:absolute;z-index:8;right:16px;bottom:58px;display:grid;gap:5px;max-width:min(290px,70%);padding:11px 13px;background:#10191df2;border:1px solid #e0a441;border-radius:5px;box-shadow:0 6px 22px #0008;pointer-events:none}.log-item-tooltip b{font:700 13px ui-monospace,monospace;color:#f0bd58}.log-item-tooltip span{font-size:12px;color:#edf2ec}.log-item-tooltip small{font-size:10px;color:#b8c4be}

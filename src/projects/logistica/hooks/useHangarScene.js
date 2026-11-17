@@ -46,7 +46,7 @@ export function useHangarScene({
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(host.clientWidth, host.clientHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     host.appendChild(renderer.domElement);
 
     scene.add(new THREE.HemisphereLight(0xdaf4ff, 0x273334, 2.2));
@@ -313,11 +313,13 @@ export function useHangarScene({
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);
     renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; updateLabel(null); renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
-    const clock = new THREE.Clock();
+    const timer = new THREE.Timer();
+    timer.connect(document);
     const draw = (time) => {
+      timer.update(time);
       hoverFx.update(time);
       if (hoveredSlot) { hoveredSlot.getWorldPosition(labelWorldPosition); labelSprite.position.copy(labelWorldPosition); labelSprite.position.y += 0.72; labelSprite.position.z += 0.55; }
-      const damping = 1 - Math.exp(-5 * clock.getDelta());
+      const damping = 1 - Math.exp(-5 * timer.getDelta());
       controls.target.lerp(controls.targetGoal, damping);
       controls.angle += (controls.angleGoal - controls.angle) * damping;
       controls.radius += (controls.radiusGoal - controls.radius) * damping;
@@ -338,8 +340,8 @@ export function useHangarScene({
     return () => {
       renderer.setAnimationLoop(null);
       renderer.domElement.removeEventListener("dblclick", onDoubleClick);
-      setHoveredItem(null);
       hoverFx.dispose();
+      timer.dispose();
       scene.remove(labelSprite);
       labelTexture.dispose();
       labelMaterial.dispose();

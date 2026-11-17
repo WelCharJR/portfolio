@@ -1,0 +1,166 @@
+import { pathTypes } from "../constants.js";
+
+// Painel lateral: busca de material, lista de itens do layout e detalhes do item selecionado.
+export default function SidePanel({
+  layout,
+  selected,
+  query,
+  selectedSlotId,
+  onQuery,
+  onSelect,
+  onOpenKanban,
+  onNotice,
+  onPathWidth,
+  onRemove,
+}) {
+  const searchResults = query.trim()
+    ? layout.kanbans.flatMap((k) =>
+        (k.slots || [])
+          .filter(
+            (s) =>
+              s.code &&
+              (s.code + " " + s.name)
+                .toLocaleLowerCase()
+                .includes(query.trim().toLocaleLowerCase()),
+          )
+          .map((s) => ({ kanban: k, slot: s })),
+      )
+    : [];
+  const currentPath = layout.paths.find((x) => x.id === selected);
+  const current = layout.kanbans.find((k) => k.id === selected);
+  return (
+    <aside className="log-panel">
+      <span className="log-eyebrow">LAYOUT DO HANGAR</span>
+      <div className="log-search">
+        <label htmlFor="log-search-input">LOCALIZAR MATERIAL</label>
+        <input
+          id="log-search-input"
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          placeholder="Código ou descrição"
+        />
+        {query.trim() && (
+          <div className="log-search-results">
+            {searchResults.length ? (
+              searchResults.slice(0, 8).map(({ kanban, slot }) => (
+                <button
+                  key={kanban.id + "-" + slot.id}
+                  onClick={() => {
+                    onOpenKanban(kanban.id, slot.id);
+                    onNotice(slot.code + " · " + kanban.id + " · caixa " + slot.id);
+                  }}
+                >
+                  <b>{slot.code || "Sem código"}</b>
+                  <span>{slot.name || "Sem descrição"}</span>
+                  <small>
+                    {kanban.id} · {kanban.name} · {slot.id} · {slot.qty} {slot.unit}
+                  </small>
+                </button>
+              ))
+            ) : (
+              <small>Nenhum material encontrado.</small>
+            )}
+          </div>
+        )}
+      </div>
+      <strong>
+        {layout.kanbans.length} kanbans · {layout.areas.length} áreas · {layout.paths.length}{" "}
+        caminhos
+      </strong>
+      <div className="log-list">
+        {layout.kanbans.map((k) => (
+          <button
+            className={selected === k.id ? "active" : ""}
+            key={k.id}
+            onClick={() => onSelect(k.id)}
+          >
+            <span className="log-dot" />
+            <span>
+              <b>{k.name}</b>
+              <small>
+                {k.id} · {k.slots.filter((s) => s.code).length} caixas ocupadas
+              </small>
+            </span>
+          </button>
+        ))}
+        {layout.areas.map((a) => (
+          <button
+            className={selected === a.id ? "active" : ""}
+            key={a.id}
+            onClick={() => onSelect(a.id)}
+          >
+            <span className="log-dot area" />
+            <span>
+              <b>{a.name}</b>
+              <small>
+                {a.id} · área · {a.points.length} vértices
+              </small>
+            </span>
+          </button>
+        ))}
+        {layout.paths.map((a) => (
+          <button
+            className={selected === a.id ? "active" : ""}
+            key={a.id}
+            onClick={() => onSelect(a.id)}
+          >
+            <span className="log-dot path" />
+            <span>
+              <b>{a.name}</b>
+              <small>
+                {a.id} · {pathTypes[a.type]?.label || "Rota logística"} · {a.width} m
+              </small>
+            </span>
+          </button>
+        ))}
+      </div>
+      {current && (
+        <div className="log-detail">
+          <span className="log-eyebrow">KANBAN SELECIONADO</span>
+          <h3>{current.name}</h3>
+          <div className="log-item">
+            <span>Caixas ocupadas</span>
+            <b>
+              {current.slots.filter((s) => s.code).length}/{current.slots.length}
+            </b>
+          </div>
+          <button className="log-inspect" onClick={() => onOpenKanban(current.id, selectedSlotId)}>
+            Ampliar e ver caixas
+          </button>
+        </div>
+      )}
+      {currentPath && (
+        <div className="log-detail">
+          <span className="log-eyebrow">CAMINHO SELECIONADO</span>
+          <h3>{currentPath.name}</h3>
+          <small>{pathTypes[currentPath.type]?.label || "Rota logística"}</small>
+          <label className="log-width">
+            Largura{" "}
+            <input
+              type="number"
+              min=".2"
+              max="4"
+              step=".1"
+              value={currentPath.width}
+              onChange={(e) => onPathWidth(currentPath.id, Number(e.target.value))}
+            />{" "}
+            m
+          </label>
+          <button className="log-delete" onClick={onRemove}>
+            Remover caminho
+          </button>
+        </div>
+      )}
+      {layout.areas.some((a) => a.id === selected) && (
+        <div className="log-detail">
+          <span className="log-eyebrow">ÁREA SELECIONADA</span>
+          <h3>{layout.areas.find((a) => a.id === selected)?.name}</h3>
+          <button className="log-delete" onClick={onRemove}>
+            Remover área
+          </button>
+        </div>
+      )}
+      <small className="log-local">● Dados salvos localmente neste navegador</small>
+    </aside>
+  );
+}

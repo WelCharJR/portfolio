@@ -154,6 +154,7 @@ export function useHangarScene({
     };
     const onDown = (e) => {
       hoverFx.hover(null, performance.now());
+      setHoveredItem(null);
       controls.down = true;
       controls.lastX = e.clientX;
       controls.lastY = e.clientY;
@@ -199,9 +200,12 @@ export function useHangarScene({
           const hit = raycaster.intersectObjects([...kanbanMeshes.values()], true)[0]?.object;
           let owner = hit;
           while (owner && !owner.userData.slotId) owner = owner.parent;
-          hoveredSlot = owner || null;
-          const item = hoveredSlot && layoutRef.current.kanbans.find((k) => k.id === hoveredSlot.userData.kanbanId)?.slots.find((slot) => slot.id === hoveredSlot.userData.slotId);
-          setHoveredItem(item?.code ? { ...item, kanbanId: hoveredSlot.userData.kanbanId } : null);
+          const nextHoveredSlot = owner || null;
+          if (nextHoveredSlot !== hoveredSlot) {
+            hoveredSlot = nextHoveredSlot;
+            const item = hoveredSlot && layoutRef.current.kanbans.find((k) => k.id === hoveredSlot.userData.kanbanId)?.slots.find((slot) => slot.id === hoveredSlot.userData.slotId);
+            setHoveredItem(item?.code ? { ...item, kanbanId: hoveredSlot.userData.kanbanId } : null);
+          }
           hoverFx.hover(hoveredSlot, performance.now());
           renderer.domElement.style.cursor = hoveredSlot ? "pointer" : "grab";
         }

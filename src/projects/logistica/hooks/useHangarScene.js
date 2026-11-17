@@ -340,7 +340,7 @@ export function useHangarScene({
     const draw = (time) => {
       timer.update(time);
       hoverFx.update(time);
-      if (hoveredSlot) { hoveredSlot.getWorldPosition(labelWorldPosition); labelSprite.position.copy(labelWorldPosition); labelSprite.position.y += 0.72; labelSprite.position.z += 0.55; }
+      if (hoveredSlot) { hoveredSlot.localToWorld(labelWorldPosition.set(0, 0.72, 0.55)); labelSprite.position.copy(labelWorldPosition); }
       const damping = 1 - Math.exp(-5 * timer.getDelta());
       controls.target.lerp(controls.targetGoal, damping);
       controls.angle += (controls.angleGoal - controls.angle) * damping;

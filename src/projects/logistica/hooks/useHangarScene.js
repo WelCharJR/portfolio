@@ -27,7 +27,6 @@ export function useHangarScene({
     setDraft,
     setCursorWorld,
     setCursorScreen,
-    setHoveredItem,
   } = setters;
 
   // Sempre o layout mais recente (a cena não é recriada ao adicionar ou editar itens).
@@ -138,6 +137,45 @@ export function useHangarScene({
     // Puxada da caixa e porcas/parafusos no hover: só com mouse e respeitando "reduzir movimento".
     const hasMatchMedia = typeof window.matchMedia === "function";
     const media = (query) => hasMatchMedia && window.matchMedia(query).matches;
+    const labelCanvas = document.createElement("canvas");
+    labelCanvas.width = 512;
+    labelCanvas.height = 144;
+    const labelContext = labelCanvas.getContext("2d");
+    const labelTexture = new THREE.CanvasTexture(labelCanvas);
+    const labelMaterial = new THREE.SpriteMaterial({ map: labelTexture, transparent: true, depthTest: false, depthWrite: false });
+    const labelSprite = new THREE.Sprite(labelMaterial);
+    labelSprite.scale.set(3.2, 0.9, 1);
+    labelSprite.renderOrder = 20;
+    labelSprite.visible = false;
+    scene.add(labelSprite);
+    const labelWorldPosition = new THREE.Vector3();
+    let labelKey = "";
+    const updateLabel = (bin) => {
+      if (!bin) { labelSprite.visible = false; labelKey = ""; return; }
+      const item = layoutRef.current.kanbans.find((k) => k.id === bin.userData.kanbanId)?.slots.find((slot) => slot.id === bin.userData.slotId);
+      if (!item) return;
+      const key = [bin.userData.kanbanId, item.id, item.code, item.name, item.qty, item.unit].join("|");
+      if (key !== labelKey) {
+        labelKey = key;
+        labelContext.clearRect(0, 0, 512, 144);
+        labelContext.fillStyle = "rgba(12, 23, 27, 0.96)";
+        labelContext.strokeStyle = "#f0bd58";
+        labelContext.lineWidth = 6;
+        labelContext.beginPath(); labelContext.roundRect(4, 4, 504, 136, 20); labelContext.fill(); labelContext.stroke();
+        labelContext.textAlign = "left";
+        labelContext.fillStyle = "#f0bd58";
+        labelContext.font = "bold 30px ui-monospace, monospace";
+        labelContext.fillText(item.code || "CAIXA VAZIA", 24, 42, 460);
+        labelContext.fillStyle = "#edf2ec";
+        labelContext.font = "24px system-ui, sans-serif";
+        labelContext.fillText(item.name || "Sem material cadastrado", 24, 78, 460);
+        labelContext.fillStyle = "#b8c4be";
+        labelContext.font = "20px ui-monospace, monospace";
+        labelContext.fillText(bin.userData.kanbanId + " · " + item.id + " · " + item.qty + " " + item.unit, 24, 116, 460);
+        labelTexture.needsUpdate = true;
+      }
+      labelSprite.visible = true;
+    };
     const hoverFx = createHoverFx(scene, {
       enabled: !hasMatchMedia || media("(hover: hover)"),
       reducedMotion: media("(prefers-reduced-motion: reduce)"),
@@ -156,7 +194,7 @@ export function useHangarScene({
     };
     const onDown = (e) => {
       hoverFx.hover(null, performance.now());
-      setHoveredItem(null);
+      updateLabel(null);
       controls.down = true;
       controls.lastX = e.clientX;
       controls.lastY = e.clientY;
@@ -205,8 +243,7 @@ export function useHangarScene({
           const nextHoveredSlot = owner || null;
           if (nextHoveredSlot !== hoveredSlot) {
             hoveredSlot = nextHoveredSlot;
-            const item = hoveredSlot && layoutRef.current.kanbans.find((k) => k.id === hoveredSlot.userData.kanbanId)?.slots.find((slot) => slot.id === hoveredSlot.userData.slotId);
-            setHoveredItem(hoveredSlot ? (item?.code ? { ...item, kanbanId: hoveredSlot.userData.kanbanId } : { id: hoveredSlot.userData.slotId, kanbanId: hoveredSlot.userData.kanbanId, code: "", name: "Caixa vazia", qty: 0, unit: "un" }) : null);
+            updateLabel(hoveredSlot);
           }
           hoverFx.hover(hoveredSlot, performance.now());
           renderer.domElement.style.cursor = hoveredSlot ? "pointer" : "grab";
@@ -275,10 +312,11 @@ export function useHangarScene({
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);
-    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; setHoveredItem(null); renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
+    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; updateLabel(null); renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
     const clock = new THREE.Clock();
     const draw = (time) => {
       hoverFx.update(time);
+      if (hoveredSlot) { hoveredSlot.getWorldPosition(labelWorldPosition); labelSprite.position.copy(labelWorldPosition); labelSprite.position.y += 0.72; labelSprite.position.z += 0.55; }
       const damping = 1 - Math.exp(-5 * clock.getDelta());
       controls.target.lerp(controls.targetGoal, damping);
       controls.angle += (controls.angleGoal - controls.angle) * damping;
@@ -302,6 +340,9 @@ export function useHangarScene({
       renderer.domElement.removeEventListener("dblclick", onDoubleClick);
       setHoveredItem(null);
       hoverFx.dispose();
+      scene.remove(labelSprite);
+      labelTexture.dispose();
+      labelMaterial.dispose();
       window.removeEventListener("resize", resize);
       clearPreview();
       clearPreviewRef.current = () => {};

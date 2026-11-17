@@ -69,9 +69,11 @@ export function useHangarScene({
     layerRefs.current = { structure: structureLayer, grid: gridLayer };
     buildHall(scene, structureLayer);
     const kanbanMeshes = new Map();
+    const slotGroups = [];
     const drawnMeshes = [];
     layout.kanbans.forEach((k) => {
       const group = buildKanban(k);
+      group.traverse((object) => { if (object.userData.slotId) slotGroups.push(object); });
       scene.add(group);
       kanbanMeshes.set(k.id, group);
     });
@@ -232,22 +234,20 @@ export function useHangarScene({
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);
-    let frame;
+    renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; renderer.domElement.style.cursor = "grab"; });
     const clock = new THREE.Clock();
     const draw = () => {
-      frame = requestAnimationFrame(draw);
       const damping = 1 - Math.exp(-5 * clock.getDelta());
       controls.target.lerp(controls.targetGoal, damping);
       controls.radius += (controls.radiusGoal - controls.radius) * damping;
-      kanbanMeshes.forEach((rack) => rack.traverse((object) => {
-        if (!object.userData.slotId) return;
+      slotGroups.forEach((object) => {
         const scale = object === hoveredSlot ? 1.08 : 1;
-        object.scale.lerp(new THREE.Vector3(scale, scale, scale), damping);
-      }));
+        object.scale.setScalar(object.scale.x + (scale - object.scale.x) * damping);
+      });
       cameraUpdate();
       renderer.render(scene, camera);
     };
-    draw();
+    renderer.setAnimationLoop(draw);
     const resize = () => {
       camera.aspect = host.clientWidth / host.clientHeight;
       camera.updateProjectionMatrix();
@@ -255,7 +255,7 @@ export function useHangarScene({
     };
     window.addEventListener("resize", resize);
     return () => {
-      cancelAnimationFrame(frame);
+      renderer.setAnimationLoop(null);
       window.removeEventListener("resize", resize);
       clearPreview();
       clearPreviewRef.current = () => {};

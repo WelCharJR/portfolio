@@ -33,7 +33,7 @@ export default function Logistica() {
   const [inspectedKanban, setInspectedKanban] = useState(null);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [focusedSlotId, setFocusedSlotId] = useState(null);
-  const kanbanPositions = layout.kanbans.map(({ id, x, z }) => id + ":" + x + ":" + z).join("|");
+  const kanbanPositions = layout.kanbans.map(({ id, x, z, rotation }) => id + ":" + x + ":" + z + ":" + (rotation || 0)).join("|");
 
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(layout));
@@ -73,10 +73,36 @@ export default function Logistica() {
     const id = "K-" + String(Date.now()).slice(-4);
     setLayout((p) => ({
       ...p,
-      kanbans: [...p.kanbans, { id, name, x: 0, z: 0, slots: emptySlots() }],
+      kanbans: [...p.kanbans, { id, name, x: 0, z: 0, rotation: 0, slots: emptySlots() }],
     }));
     setSelected(id);
     setNotice("Kanban adicionado. Arraste-o para o local desejado.");
+  };
+  const rotateKanban = (id, delta) => setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, rotation: ((k.rotation || 0) + delta + 360) % 360 } : k) }));
+  const exportBackup = () => {
+    const backup = { format: "hangar-logistica", version: 1, exportedAt: new Date().toISOString(), layout };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "backup-hangar-" + new Date().toISOString().slice(0, 10) + ".json";
+    link.click();
+    URL.revokeObjectURL(url);
+    setNotice("Backup do hangar exportado.");
+  };
+  const importBackup = async (file) => {
+    try {
+      const backup = JSON.parse(await file.text());
+      const data = backup?.format === "hangar-logistica" && backup?.version === 1 ? backup.layout : null;
+      const valid = data && Array.isArray(data.kanbans) && Array.isArray(data.areas) && Array.isArray(data.paths)
+        && data.kanbans.every((k) => typeof k.id === "string" && typeof k.name === "string" && Number.isFinite(k.x) && Number.isFinite(k.z) && Array.isArray(k.slots) && k.slots.length === 60);
+      if (!valid) throw new Error("Arquivo inválido");
+      setLayout({ ...data, kanbans: data.kanbans.map((k) => ({ ...k, rotation: Number(k.rotation) || 0 })) });
+      setSelected(null);
+      setInspectedKanban(null);
+      setNotice("Backup restaurado. Os dados foram salvos neste navegador.");
+    } catch {
+      setNotice("Não foi possível restaurar o arquivo. Escolha um backup JSON do hangar.");
+    }
   };
   const openKanban = (id, slotId = null) => {
     const k = layout.kanbans.find((item) => item.id === id);
@@ -254,6 +280,9 @@ export default function Logistica() {
           onAddItem={addItem}
           onRemoveItem={removeItem}
           onRenameKanban={renameKanban}
+          onRotateKanban={rotateKanban}
+          onExportBackup={exportBackup}
+          onImportBackup={importBackup}
           onSelect={setSelected}
           onOpenKanban={openKanban}
           onNotice={setNotice}

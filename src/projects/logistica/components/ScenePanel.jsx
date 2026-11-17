@@ -81,7 +81,7 @@ export default function ScenePanel({
           </span>
         </div>
       )}
-      {hoveredItem && <div className="log-item-tooltip"><b>{hoveredItem.code}</b><span>{hoveredItem.name||"Sem descrição"}</span><small>{hoveredItem.kanbanId} · caixa {hoveredItem.id} · {hoveredItem.qty} {hoveredItem.unit}</small></div>}
+      {hoveredItem && <div className="log-item-tooltip"><b>{hoveredItem.code || "Caixa vazia"}</b><span>{hoveredItem.name||"Sem descrição"}</span><small>{hoveredItem.kanbanId} · caixa {hoveredItem.id} · {hoveredItem.qty} {hoveredItem.unit}</small></div>}
       <div className="log-status">
         <i /> {notice}
       </div>

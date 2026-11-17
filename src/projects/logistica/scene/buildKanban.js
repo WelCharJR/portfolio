@@ -5,6 +5,7 @@ import { ROWS, COLS } from "../constants.js";
 export function buildKanban(k) {
   const group = new THREE.Group();
   group.position.set(k.x, 0, k.z);
+  group.rotation.y = THREE.MathUtils.degToRad(k.rotation || 0);
   group.userData.id = k.id;
   const frame = new THREE.MeshStandardMaterial({
     color: "#d8ded7",

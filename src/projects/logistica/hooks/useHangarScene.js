@@ -107,6 +107,8 @@ export function useHangarScene({
     };
     const raycaster = new THREE.Raycaster(),
       pointer = new THREE.Vector2();
+    const activePointers = new Map();
+    let pinchDistance = 0;
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
       hit = new THREE.Vector3();
     const updatePointer = (e) => {
@@ -193,6 +195,15 @@ export function useHangarScene({
       controls.radiusGoal = radius;
     };
     const onDown = (e) => {
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size > 1) {
+        controls.dragging = null;
+        controls.down = true;
+        const points = [...activePointers.values()];
+        pinchDistance = Math.hypot(points[0].x-points[1].x, points[0].y-points[1].y);
+        renderer.domElement.setPointerCapture(e.pointerId);
+        return;
+      }
       hoverFx.hover(null, performance.now());
       updateLabel(null);
       controls.down = true;
@@ -233,6 +244,14 @@ export function useHangarScene({
     };
     let hoveredSlot = null;
     const onMove = (e) => {
+      if (activePointers.has(e.pointerId)) activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size > 1) {
+        const points = [...activePointers.values()];
+        const nextDistance = Math.hypot(points[0].x-points[1].x, points[0].y-points[1].y);
+        controls.radiusGoal = Math.max(9, Math.min(100, controls.radiusGoal + (pinchDistance-nextDistance)*0.08));
+        pinchDistance = nextDistance;
+        return;
+      }
       if (!controls.down) {
         if (toolRef.current === "select") {
           updatePointer(e);
@@ -281,7 +300,9 @@ export function useHangarScene({
         controls.radiusGoal = Math.max(28, Math.min(100, controls.radiusGoal + dy * 0.08));
       }
     };
-    const onUp = () => {
+    const onUp = (e) => {
+      activePointers.delete(e.pointerId);
+      if (activePointers.size) { controls.down = true; return; }
       if (controls.dragging) {
         const id = controls.dragging,
           m = kanbanMeshes.get(id);
@@ -312,6 +333,7 @@ export function useHangarScene({
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);
+    renderer.domElement.addEventListener("pointercancel", onUp);
     renderer.domElement.addEventListener("pointerleave", () => { hoveredSlot = null; updateLabel(null); renderer.domElement.style.cursor = "grab"; hoverFx.hover(null, performance.now()); });
     const timer = new THREE.Timer();
     timer.connect(document);
@@ -340,6 +362,7 @@ export function useHangarScene({
     return () => {
       renderer.setAnimationLoop(null);
       renderer.domElement.removeEventListener("dblclick", onDoubleClick);
+      renderer.domElement.removeEventListener("pointercancel", onUp);
       hoverFx.dispose();
       timer.dispose();
       scene.remove(labelSprite);

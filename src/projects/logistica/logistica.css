@@ -43,3 +43,42 @@
 
 .kanban-rename{display:grid;gap:5px;color:#cbd3cd;font-size:11px}.kanban-rename input{width:100%;box-sizing:border-box;padding:7px;background:#11191c;color:#e9eee9;border:1px solid #536366;border-radius:4px}.inventory-manager select{font-size:11px}
 
+
+@media(max-width:760px){
+  .log-app{min-height:100svh;border-radius:0;overflow:visible}
+  .log-top{position:relative;padding:14px 14px 12px;gap:10px}
+  .log-top h2{font-size:18px}
+  .log-eyebrow{font-size:9px}
+  .log-actions{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+  .log-top .log-actions button{min-height:44px;padding:8px 5px;font-size:11px}
+  .log-body{display:flex;flex-direction:column;min-height:0}
+  .log-scene{order:0;min-height:clamp(390px,58svh,560px);height:clamp(390px,58svh,560px);overflow:hidden}
+  .log-panel{order:1;width:auto;min-width:0;padding:16px 14px 24px;border:0;border-top:1px solid #344144;gap:14px;overflow:visible}
+  .log-tools{top:10px;left:8px;right:8px;gap:6px}
+  .log-tools button{min-height:40px;padding:7px 9px;font-size:11px}
+  .log-tools .log-path-type{min-height:40px;max-width:155px}
+  .log-hint{top:61px;left:8px;right:8px;max-width:none;width:max-content;max-width:calc(100% - 16px);font-size:8px}
+  .log-position{top:auto;right:8px;bottom:48px;min-width:0;font-size:9px}
+  .log-draft-points{top:auto;right:8px;bottom:82px;max-height:80px;font-size:9px}
+  .log-status{left:8px;right:8px;bottom:8px;font-size:10px;line-height:1.35}
+  .log-crosshair span{font-size:9px}
+  .log-search>input,.inventory-manager input,.inventory-manager select,.kanban-rename input{min-height:44px;font-size:16px}
+  .inventory-manager form>button,.log-inspect,.log-delete{min-height:44px}
+  .log-search-results{max-height:260px}
+  .inventory-list{max-height:260px}
+  .log-list button{min-height:48px}
+  .kanban-backdrop{position:fixed}
+  .kanban-modal{max-height:calc(100svh - 16px)}
+  .kanban-inspect-body{grid-template-columns:minmax(0,1fr)}
+  .kanban-rack{max-height:43svh}
+  .kanban-slot-editor{display:grid;grid-template-columns:1fr 1fr;align-items:end}
+  .kanban-slot-editor>.log-eyebrow,.kanban-slot-editor h3,.kanban-slot-editor>small{grid-column:1/-1}
+  .kanban-slot-editor input{min-height:44px;font-size:16px}
+}
+@media(max-width:390px){
+  .log-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .log-tools button{font-size:10px;padding:6px}
+  .log-position{max-width:130px}
+  .kanban-modal>header h2{font-size:16px}
+  .kanban-slot-editor{grid-template-columns:1fr}
+}

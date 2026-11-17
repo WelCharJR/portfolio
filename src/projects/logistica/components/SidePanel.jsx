@@ -10,6 +10,7 @@ export default function SidePanel({
   onQuery,
   onAddItem,
   onRemoveItem,
+  onRenameKanban,
   onSelect,
   onOpenKanban,
   onNotice,
@@ -34,8 +35,9 @@ export default function SidePanel({
   const [name, setName] = useState("");
   const [qty, setQty] = useState("10");
   const [unit, setUnit] = useState("un");
+  const [slotChoice, setSlotChoice] = useState("next");
   const inventory = layout.kanbans.flatMap((kanban) => kanban.slots.filter((slot) => slot.code).map((slot) => ({kanban, slot})));
-  const submitItem = (e) => { e.preventDefault(); if (!code.trim()) return; onAddItem({kanbanId, code:code.trim(), name:name.trim(), qty:Math.max(0,Number(qty)||0), unit:unit.trim()||"un"}); setCode(""); setName(""); };
+  const submitItem = (e) => { e.preventDefault(); if (!code.trim()) return; onAddItem({kanbanId, slotId:slotChoice === "next" ? null : slotChoice, code:code.trim(), name:name.trim(), qty:Math.max(0,Number(qty)||0), unit:unit.trim()||"un"}); setCode(""); setName(""); };
   const currentPath = layout.paths.find((x) => x.id === selected);
   const current = layout.kanbans.find((k) => k.id === selected);
   return (
@@ -77,6 +79,7 @@ export default function SidePanel({
         <span className="log-eyebrow">GERENCIAR MATERIAIS</span>
         <form onSubmit={submitItem}>
           <select value={kanbanId} onChange={e=>setKanbanId(e.target.value)} aria-label="Kanban de destino">{layout.kanbans.map(k=><option key={k.id} value={k.id}>{k.id} · {k.name}</option>)}</select>
+          <select value={slotChoice} onChange={e=>setSlotChoice(e.target.value)} aria-label="Caixa de destino"><option value="next">Próxima caixa livre</option>{layout.kanbans.find(k=>k.id===kanbanId)?.slots.filter(s=>!s.code).map(s=><option key={s.id} value={s.id}>{s.id}</option>)}</select>
           <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Código do item" aria-label="Código do item" required />
           <input value={name} onChange={e=>setName(e.target.value)} placeholder="Descrição" aria-label="Descrição" />
           <div><input type="number" min="0" value={qty} onChange={e=>setQty(e.target.value)} aria-label="Quantidade"/><input value={unit} onChange={e=>setUnit(e.target.value)} aria-label="Unidade"/></div>
@@ -138,7 +141,7 @@ export default function SidePanel({
       {current && (
         <div className="log-detail">
           <span className="log-eyebrow">KANBAN SELECIONADO</span>
-          <h3>{current.name}</h3>
+          <label className="kanban-rename">Nome do kanban<input value={current.name} onChange={e=>onRenameKanban(current.id,e.target.value)} /></label>
           <div className="log-item">
             <span>Caixas ocupadas</span>
             <b>

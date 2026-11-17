@@ -111,25 +111,31 @@ export default function Logistica() {
     const wallMat = steel;
     const kanbanMeshes = new Map();
     const drawnMeshes = [];
-    layout.kanbans.forEach((k, i) => {
-      const group = new THREE.Group(); group.position.set(k.x,0,k.z); group.userData.id = k.id;
-      const wood = new THREE.MeshStandardMaterial({ color:"#9a7042", roughness:.8 });
-      const frame = new THREE.MeshStandardMaterial({ color:"#d8ded7", metalness:.45, roughness:.5 });
-      const trayMats = ["#e0a441","#57928d","#c86a4a","#6e91a0","#d5bd81","#8a9a70"];
-      const pallet = new THREE.Mesh(new THREE.BoxGeometry(1.55,.16,1.1),wood); pallet.position.y=.12; pallet.castShadow=true; group.add(pallet);
-      for(const x of [-.72,.72]) for(const z of [-.5,.5]){
-        const post=new THREE.Mesh(new THREE.BoxGeometry(.07,1.55,.07),frame);post.position.set(x,1,z);group.add(post);
+    layout.kanbans.forEach(k=>{
+      const group=new THREE.Group();group.position.set(k.x,0,k.z);group.userData.id=k.id;
+      const frame=new THREE.MeshStandardMaterial({color:"#d8ded7",metalness:.45,roughness:.5});
+      const dark=new THREE.MeshStandardMaterial({color:"#26353a",metalness:.25,roughness:.75});
+      const blue=new THREE.MeshStandardMaterial({color:"#0877b7",roughness:.72});
+      const blueEmpty=new THREE.MeshStandardMaterial({color:"#155879",roughness:.82});
+      const binLabel=new THREE.MeshStandardMaterial({color:"#f0eadb"});
+      const beam=(w,h,d,x,y,z,mat)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=true;group.add(m);};
+      beam(5.35,.18,1.5,0,.1,0,dark);
+      for(const x of [-2.58,2.58])for(const z of [-.62,.62])beam(.1,3.65,.1,x,1.85,z,frame);
+      for(let row=0;row<ROWS.length;row++){
+        const y=.28+(ROWS.length-1-row)*.52;
+        beam(5.1,.08,1.25,0,y,-.02,frame);
+        for(let col=0;col<COLS;col++){
+          const slot=k.slots?.find(item=>item.id===`${ROWS[row]}-${col+1}`)||{id:`${ROWS[row]}-${col+1}`,code:"",name:"",qty:0};
+          const x=(col-(COLS-1)/2)*.5;
+          const bin=new THREE.Group();bin.position.set(x,y+.23,.25);bin.userData.slotId=slot.id;bin.userData.kanbanId=k.id;
+          const crate=new THREE.Mesh(new THREE.BoxGeometry(.44,.4,.72),slot.code?blue:blueEmpty);crate.castShadow=true;bin.add(crate);
+          const lip=new THREE.Mesh(new THREE.BoxGeometry(.46,.07,.08),dark);lip.position.set(0,-.11,.39);bin.add(lip);
+          const tag=new THREE.Mesh(new THREE.BoxGeometry(.28,.12,.025),binLabel);tag.position.set(0,-.09,.377);bin.add(tag);
+          group.add(bin);
+        }
       }
-      for(const y of [.38,.92,1.46]){
-        const shelf=new THREE.Mesh(new THREE.BoxGeometry(1.48,.07,1.02),frame);shelf.position.y=y;group.add(shelf);
-      }
-      let n=0;
-      for(const y of [.63,1.17]) for(const x of [-.43,0,.43]){
-        const bin=new THREE.Mesh(new THREE.BoxGeometry(.39,.38,.38),new THREE.MeshStandardMaterial({color:trayMats[(i+n)%trayMats.length],roughness:.62}));
-        bin.position.set(x,y,.12);bin.castShadow=true;group.add(bin);
-        const label=new THREE.Mesh(new THREE.BoxGeometry(.24,.11,.02),new THREE.MeshStandardMaterial({color:"#f0eadb"}));label.position.set(x,y,.32);group.add(label);n++;
-      }
-      scene.add(group); kanbanMeshes.set(k.id, group);
+      for(let i=0;i<3;i++)beam(5.2,.07,.09,0,.35+i*1.04,-.72,frame);
+      scene.add(group);kanbanMeshes.set(k.id,group);
     });
 
     layout.areas.forEach(area => {
@@ -178,7 +184,8 @@ export default function Logistica() {
     const clearPreview=()=>{while(previewGroup.children.length){const obj=previewGroup.children[0];previewGroup.remove(obj);obj.geometry?.dispose();if(Array.isArray(obj.material))obj.material.forEach(m=>m.dispose());else obj.material?.dispose();}}; clearPreviewRef.current=clearPreview;
     const refreshPreview=(points,hover)=>{clearPreview();const visible=hover?[...points,hover]:points;if(visible.length>1){const coords=visible.map(p=>new THREE.Vector3(p.x,.12,p.z));const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(coords),new THREE.LineBasicMaterial({color:toolRef.current==="area"?"#5ce0c5":"#ffd15d"}));previewGroup.add(line);if(toolRef.current==="area"&&visible.length>=3){const shape=new THREE.Shape();visible.forEach((p,i)=>i===0?shape.moveTo(p.x,-p.z):shape.lineTo(p.x,-p.z));shape.closePath();const fill=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshBasicMaterial({color:"#4aa899",transparent:true,opacity:.3,side:THREE.DoubleSide,depthWrite:false}));fill.rotation.x=-Math.PI/2;fill.position.y=.08;previewGroup.add(fill);}if(toolRef.current==="path"&&visible.length>=2){const config=pathTypes[pathTypeRef.current];previewGroup.add(buildPathMesh(visible,config.width,config.color,pathTypeRef.current==="pedestrian"));}}visible.forEach((p,i)=>{const marker=new THREE.Mesh(new THREE.SphereGeometry(hover&&i===visible.length-1?.18:.14,12,10),new THREE.MeshBasicMaterial({color:hover&&i===visible.length-1?"#ffffff":toolRef.current==="area"?"#5ce0c5":"#e2b644"}));marker.position.set(p.x,.22,p.z);previewGroup.add(marker);});};
     zoomRef.current=(amount)=>{controls.radius=Math.max(28,Math.min(100,controls.radius+amount));cameraUpdate();};
-    const onDown=e=>{ controls.down=true; controls.lastX=e.clientX; controls.lastY=e.clientY; const screen=updatePointer(e); setCursorScreen(screen); raycaster.setFromCamera(pointer,camera); if(toolRef.current==="area"||toolRef.current==="path"){ if(raycaster.ray.intersectPlane(plane,hit)){ const point=snapPoint(hit.x,hit.z); const next=[...draftRef.current,point]; draftRef.current=next; setDraft(next); setCursorWorld(point); refreshPreview(next,null); } controls.down=false; return; } const hits=raycaster.intersectObjects([...kanbanMeshes.values(),...drawnMeshes],true); if(hits.length){ let o=hits[0].object; while(o.parent && !o.userData.id)o=o.parent; controls.dragging=o.userData.kind?null:o.userData.id; setSelected(o.userData.id); } renderer.domElement.setPointerCapture(e.pointerId); };
+    focusRef.current=(x,z,radius=10)=>{controls.target.set(x,0,z);controls.radius=radius;cameraUpdate();};
+    const onDown=e=>{ controls.down=true; controls.lastX=e.clientX; controls.lastY=e.clientY; const screen=updatePointer(e); setCursorScreen(screen); raycaster.setFromCamera(pointer,camera); if(toolRef.current==="area"||toolRef.current==="path"){ if(raycaster.ray.intersectPlane(plane,hit)){ const point=snapPoint(hit.x,hit.z); const next=[...draftRef.current,point]; draftRef.current=next; setDraft(next); setCursorWorld(point); refreshPreview(next,null); } controls.down=false; return; } const hits=raycaster.intersectObjects([...kanbanMeshes.values(),...drawnMeshes],true); if(hits.length){const hitObject=hits[0].object;const slotOwner=hitObject.userData.slotId?hitObject:null;let o=hitObject;while(o.parent&&!o.userData.id)o=o.parent;controls.dragging=o.userData.kind?null:o.userData.id;setSelected(o.userData.id);if(slotOwner){setSelectedSlotId(slotOwner.userData.slotId);setNotice(`${o.userData.id} · caixa ${slotOwner.userData.slotId}`);} } renderer.domElement.setPointerCapture(e.pointerId); };
     const onMove=e=>{ if(!controls.down){if(toolRef.current==="area"||toolRef.current==="path"){const screen=updatePointer(e);setCursorScreen(screen);raycaster.setFromCamera(pointer,camera);if(raycaster.ray.intersectPlane(plane,hit)){const point=snapPoint(hit.x,hit.z);setCursorWorld(prev=>!prev||prev.x!==point.x||prev.z!==point.z?point:prev);refreshPreview(draftRef.current,point);}}return;} const dx=e.clientX-controls.lastX,dy=e.clientY-controls.lastY; controls.lastX=e.clientX; controls.lastY=e.clientY; if(controls.dragging){ updatePointer(e); raycaster.setFromCamera(pointer,camera); if(raycaster.ray.intersectPlane(plane,hit)){ const m=kanbanMeshes.get(controls.dragging); const point=snapPoint(hit.x,hit.z); m.position.x=point.x; m.position.z=point.z; } } else { controls.angle-=dx*.006; controls.radius=Math.max(28,Math.min(100,controls.radius+dy*.08)); cameraUpdate(); } };
     const onUp=()=>{ if(controls.dragging){const id=controls.dragging,m=kanbanMeshes.get(id); setLayout(prev=>({...prev,kanbans:prev.kanbans.map(k=>k.id===id?{...k,x:m.position.x,z:m.position.z}:k)})); controls.dragging=null; setNotice("Posição salva neste navegador.");} controls.down=false; };
     renderer.domElement.addEventListener("pointerdown",onDown); renderer.domElement.addEventListener("pointermove",onMove); renderer.domElement.addEventListener("pointerup",onUp);

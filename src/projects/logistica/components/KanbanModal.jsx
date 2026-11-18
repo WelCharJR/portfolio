@@ -1,6 +1,7 @@
 // Inspeção de um kanban: grade de caixas (A–F x 1–10) e editor da caixa selecionada.
 export default function KanbanModal({
   inspected,
+  viewOnly,
   selectedSlotId,
   focusedSlotId,
   onClose,
@@ -49,11 +50,13 @@ export default function KanbanModal({
           <aside className="kanban-slot-editor">
             {selectedSlot ? (
               <>
+                {viewOnly && <span className="log-eyebrow">MODO VISUALIZAÇÃO · SOMENTE LEITURA</span>}
                 <span className="log-eyebrow">CAIXA {selectedSlot.id}</span>
                 <h3>{selectedSlot.code || "Nova caixa"}</h3>
                 <label>
                   Código
                   <input
+                    disabled={viewOnly}
                     value={selectedSlot.code}
                     onChange={(e) => onUpdateSlot("code", e.target.value)}
                     placeholder="Ex.: NAS1097"
@@ -62,6 +65,7 @@ export default function KanbanModal({
                 <label>
                   Descrição
                   <input
+                    disabled={viewOnly}
                     value={selectedSlot.name}
                     onChange={(e) => onUpdateSlot("name", e.target.value)}
                     placeholder="Ex.: Rebite escareado"
@@ -72,6 +76,7 @@ export default function KanbanModal({
                   <input
                     type="number"
                     min="0"
+                    disabled={viewOnly}
                     value={selectedSlot.qty}
                     onChange={(e) => onUpdateSlot("qty", e.target.value)}
                   />
@@ -79,6 +84,7 @@ export default function KanbanModal({
                 <label>
                   Unidade
                   <input
+                    disabled={viewOnly}
                     value={selectedSlot.unit}
                     onChange={(e) => onUpdateSlot("unit", e.target.value)}
                     placeholder="un"

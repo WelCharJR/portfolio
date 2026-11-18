@@ -88,7 +88,7 @@
 
 /* Let the 3D workspace use the available page width and height. */
 .logistica-project-page{width:100%;max-width:none;margin:0;padding:10px 14px 14px;box-sizing:border-box}
-.logistica-project-page .logistica-demo-frame{width:100%;margin:0;border-radius:8px;overflow:hidden}
+.logistica-project-page .logistica-demo-frame{width:100%;margin:0;padding:0;border:0;background:transparent;box-shadow:none;border-radius:8px;overflow:hidden}
 .logistica-project-page .log-app{min-height:calc(100svh - 142px);border-radius:8px}
 .logistica-project-page .log-body{min-height:calc(100svh - 214px);grid-template-columns:minmax(0,1fr) minmax(280px,320px)}
 .logistica-project-page .log-scene{min-height:calc(100svh - 214px)}

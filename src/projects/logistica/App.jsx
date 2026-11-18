@@ -87,6 +87,7 @@ export default function Logistica() {
   const rotateKanban = (id, delta) => {
     if (viewOnly) return;
     setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, rotation: ((k.rotation || 0) + delta + 360) % 360 } : k) }));
+  };
   const exportBackup = () => {
     const backup = { format: "hangar-logistica", version: 1, exportedAt: new Date().toISOString(), layout };
     const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }));

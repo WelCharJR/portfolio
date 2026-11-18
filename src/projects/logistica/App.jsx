@@ -232,6 +232,41 @@ export default function Logistica() {
     setLayout((p) => ({ ...p, paths: p.paths.map((x) => (x.id === id ? { ...x, width } : x)) }));
 
   useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.target instanceof HTMLElement && (event.target.isContentEditable || /INPUT|TEXTAREA|SELECT|BUTTON/.test(event.target.tagName))) return;
+      if (tool !== "select" || !selected || event.altKey || event.ctrlKey || event.metaKey) return;
+      const kanban = layout.kanbans.find((item) => item.id === selected);
+      if (!kanban) return;
+      const key = event.key.toLowerCase();
+      if (key === "r") {
+        event.preventDefault();
+        rotateKanban(selected, event.shiftKey ? -15 : 15);
+        setNotice(`Rotação: ${((kanban.rotation || 0) + (event.shiftKey ? -15 : 15) + 360) % 360}°`);
+        return;
+      }
+      const step = event.shiftKey ? 1 : 0.25;
+      const moves = {
+        w: [0, -step], arrowup: [0, -step],
+        s: [0, step], arrowdown: [0, step],
+        a: [-step, 0], arrowleft: [-step, 0],
+        d: [step, 0], arrowright: [step, 0],
+      };
+      const move = moves[key];
+      if (!move) return;
+      event.preventDefault();
+      setLayout((previous) => ({
+        ...previous,
+        kanbans: previous.kanbans.map((item) =>
+          item.id === selected ? { ...item, x: item.x + move[0], z: item.z + move[1] } : item,
+        ),
+      }));
+      setNotice(`Kanban movido · X ${(kanban.x + move[0]).toFixed(2)} · Z ${(kanban.z + move[1]).toFixed(2)} m`);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [layout.kanbans, rotateKanban, selected, setNotice, tool]);
+
+  useEffect(() => {
     if (focusedSlotId)
       document
         .getElementById("slot-" + focusedSlotId)

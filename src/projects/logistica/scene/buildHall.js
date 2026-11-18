@@ -40,7 +40,7 @@ export function buildHall(scene, structureLayer) {
   addBox(48, 0.28, 0.4, 0, 7.4, -9, yellow);
   for (let x = -26; x <= 26; x += 13) addBox(0.34, 9.5, 0.34, x, 4.75, 21.2, steel);
   for (let x = -20; x <= 20; x += 10) {
-    const lamp = new THREE.PointLight(0xfff3d3, 44, 18);
+    const lamp = new THREE.PointLight(0xfff3d3, 24, 20);
     lamp.position.set(x, 9, 1);
     scene.add(lamp);
   }

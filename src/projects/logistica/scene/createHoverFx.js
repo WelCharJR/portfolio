@@ -81,7 +81,7 @@ export function createHoverFx(
       const slot = free[p.kind].shift();
       p.x = origin.x + (rand() - 0.5) * 0.2;
       p.y = origin.y + 0.22;
-      p.z = origin.z + distance + 0.3;
+      p.z = origin.z + distance * (bin.userData.pullDirection || 1) + 0.3 * (bin.userData.pullDirection || 1);
       slot.p = p;
       slot.obj.visible = true;
       sync(slot);
@@ -110,7 +110,7 @@ export function createHoverFx(
     update(now) {
       for (const [bin, state] of bins) {
         const v = valueAt(state.tween, now);
-        bin.position.z = state.base + v * distance;
+        bin.position.z = state.base + v * distance * (bin.userData.pullDirection || 1);
         if (state.tween.to === 0 && v === 0) {
           bin.position.z = state.base;
           bins.delete(bin);

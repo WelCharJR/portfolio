@@ -4,6 +4,7 @@ import { pathTypes } from "../constants.js";
 // Painel lateral: busca de material, lista de itens do layout e detalhes do item selecionado.
 export default function SidePanel({
   layout,
+  viewOnly,
   selected,
   query,
   selectedSlotId,
@@ -44,8 +45,8 @@ export default function SidePanel({
   const currentPath = layout.paths.find((x) => x.id === selected);
   const current = layout.kanbans.find((k) => k.id === selected);
   return (
-    <aside className="log-panel">
-      <span className="log-eyebrow">LAYOUT DO HANGAR</span>
+    <aside className={viewOnly ? "log-panel view-only" : "log-panel"}>
+      <span className="log-eyebrow">{viewOnly ? "VISUALIZAÇÃO · SOMENTE LEITURA" : "LAYOUT DO HANGAR"}</span>
       <div className="log-search">
         <label htmlFor="log-search-input">LOCALIZAR MATERIAL</label>
         <input

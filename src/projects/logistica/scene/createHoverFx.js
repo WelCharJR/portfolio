@@ -69,6 +69,7 @@ export function createHoverFx(
   };
 
   const origin = new THREE.Vector3();
+  const pullVector = new THREE.Vector3();
   const burst = (bin, now) => {
     if (now - (lastBurst.get(bin) ?? -Infinity) < MOTION.cooldownMs) return;
     const pieces = spawnBurst(rand, MOTION.burstCount);
@@ -77,11 +78,12 @@ export function createHoverFx(
     pieces.forEach((p) => need[p.kind]++);
     if (free.nut.length < need.nut || free.bolt.length < need.bolt) return;
     bin.getWorldPosition(origin);
+    bin.getWorldDirection(pullVector).multiplyScalar(distance + 0.3);
     pieces.forEach((p) => {
       const slot = free[p.kind].shift();
       p.x = origin.x + (rand() - 0.5) * 0.2;
-      p.y = origin.y + 0.22;
-      p.z = origin.z + distance * (bin.userData.pullDirection || 1) + 0.3 * (bin.userData.pullDirection || 1);
+      p.y = origin.y + 0.22 + pullVector.y;
+      p.z = origin.z + pullVector.z;
       slot.p = p;
       slot.obj.visible = true;
       sync(slot);

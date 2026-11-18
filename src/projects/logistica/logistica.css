@@ -84,3 +84,12 @@
 }
 
 .backup-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.backup-actions button,.backup-actions label{display:grid;place-items:center;min-height:40px;padding:7px 8px;text-align:center;color:#e9eee9;background:#253438;border:1px solid #58676a;border-radius:4px;font-size:11px;cursor:pointer}.backup-actions input{max-width:100%;font-size:10px}.kanban-rotation{display:grid;gap:7px;padding:9px 0;color:#cbd3cd;font-size:11px}.kanban-rotation>div{display:flex;gap:7px}.kanban-rotation button{min-height:38px;padding:6px 10px;color:#e9eee9;background:#253438;border:1px solid #58676a;border-radius:4px;cursor:pointer}@media(max-width:760px){.backup-actions button,.backup-actions label{min-height:44px;font-size:12px}.kanban-rotation button{min-height:44px;flex:1}}
+
+
+/* Let the 3D workspace use the available page width and height. */
+.logistica-project-page{width:100%;max-width:none;margin:0;padding:10px 14px 14px;box-sizing:border-box}
+.logistica-project-page .logistica-demo-frame{width:100%;margin:0;border-radius:8px;overflow:hidden}
+.logistica-project-page .log-app{min-height:calc(100svh - 142px);border-radius:8px}
+.logistica-project-page .log-body{min-height:calc(100svh - 214px);grid-template-columns:minmax(0,1fr) minmax(280px,320px)}
+.logistica-project-page .log-scene{min-height:calc(100svh - 214px)}
+@media(max-width:760px){.logistica-project-page{padding:0}.logistica-project-page .logistica-demo-frame{border-radius:0}.logistica-project-page .log-app{min-height:100svh}.logistica-project-page .log-scene{min-height:clamp(390px,58svh,560px);height:clamp(390px,58svh,560px)}}

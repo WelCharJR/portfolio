@@ -29,6 +29,7 @@ export default function Logistica() {
   const layerRefs = useRef({});
   const zoomRef = useRef(() => {});
   const focusRef = useRef(() => {});
+  const viewRef = useRef(null);
   const [query, setQuery] = useState("");
   const [inspectedKanban, setInspectedKanban] = useState(null);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
@@ -54,6 +55,7 @@ export default function Logistica() {
       clearPreviewRef,
       zoomRef,
       focusRef,
+      viewRef,
     },
     setters: {
       setLayout,

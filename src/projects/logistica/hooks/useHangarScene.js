@@ -195,6 +195,7 @@ export function useHangarScene({
       controls.radiusGoal = radius;
     };
     const onDown = (e) => {
+      if (e.button !== 0) return;
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (activePointers.size > 1) {
         controls.dragging = null;
@@ -330,6 +331,7 @@ export function useHangarScene({
       setNotice(kanban.name + " · passe o cursor sobre uma caixa para ver o conteúdo");
     };
     renderer.domElement.addEventListener("dblclick", onDoubleClick);
+    renderer.domElement.addEventListener("contextmenu", (e) => e.preventDefault());
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onUp);

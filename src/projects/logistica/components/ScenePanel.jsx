@@ -53,6 +53,7 @@ export default function ScenePanel({
           </>
         )}
       </div>
+      <div className="log-key-help">R girar · WASD mover · Shift passo maior</div>
       <div className="log-position">
         {tool !== "select" && cursorWorld
           ? `Cursor X ${cursorWorld.x.toFixed(1)} · Z ${cursorWorld.z.toFixed(1)} m`

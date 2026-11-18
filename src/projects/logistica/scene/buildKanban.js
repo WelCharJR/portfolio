@@ -44,6 +44,7 @@ export function buildKanban(k) {
       bin.position.set(x, y + 0.23, 0.25);
       bin.userData.slotId = slot.id;
       bin.userData.kanbanId = k.id;
+      bin.userData.pullDirection = 1;
       const crate = new THREE.Mesh(
         new THREE.BoxGeometry(0.44, 0.4, 0.72),
         slot.code ? blue : blueEmpty,
@@ -59,6 +60,7 @@ export function buildKanban(k) {
       const backBin = bin.clone(true);
       backBin.position.z = -0.25;
       backBin.rotation.y = Math.PI;
+      backBin.userData.pullDirection = -1;
       group.add(bin, backBin);
     }
   }

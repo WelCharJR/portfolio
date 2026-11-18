@@ -74,7 +74,7 @@ export default function ScenePanel({
           ? "MODO VISUALIZAÇÃO · CLIQUE PARA SELECIONAR · DOIS CLIQUES PARA ENQUADRAR"
           : (tool === "area"
             ? "CLIQUE ESQUERDO NO PISO PARA DESENHAR A ÁREA"
-            : "CLIQUE ESQUERDO NO PISO PARA DESENHAR O CAMINHO") + " · ARRASTE KANBANS COM O CLIQUE ESQUERDO"
+            : "CLIQUE ESQUERDO NO PISO PARA DESENHAR O CAMINHO") + " · ARRASTE KANBANS COM O CLIQUE ESQUERDO"}
       </div>
       <div className="log-canvas" ref={canvasRef} />
       {tool !== "select" && cursorScreen && (

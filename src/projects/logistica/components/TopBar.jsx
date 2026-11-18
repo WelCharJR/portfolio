@@ -1,5 +1,7 @@
 // Barra superior: zoom, camadas da cena e novo kanban.
 export default function TopBar({
+  viewOnly,
+  onToggleViewOnly,
   showGrid,
   showStructure,
   onZoom,
@@ -26,7 +28,10 @@ export default function TopBar({
         <button className={showStructure ? "" : "muted"} onClick={() => onToggleStructure()}>
           Estrutura {showStructure ? "visível" : "oculta"}
         </button>
-        <button onClick={onAddKanban}>＋ Kanban</button>
+        <button className={viewOnly ? "view-mode-on" : "muted"} onClick={onToggleViewOnly} aria-pressed={viewOnly}>
+          {viewOnly ? "Visualização ligada" : "Modo visualização"}
+        </button>
+        {!viewOnly && <button onClick={onAddKanban}>＋ Kanban</button>}
       </div>
     </header>
   );

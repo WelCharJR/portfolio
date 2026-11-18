@@ -56,7 +56,10 @@ export function buildKanban(k) {
       const tag = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.025), binLabel);
       tag.position.set(0, -0.09, 0.377);
       bin.add(tag);
-      group.add(bin);
+      const backBin = bin.clone(true);
+      backBin.position.z = -0.25;
+      backBin.rotation.y = Math.PI;
+      group.add(bin, backBin);
     }
   }
   for (let i = 0; i < 3; i++) beam(5.2, 0.07, 0.09, 0, 0.35 + i * 1.04, -0.72, frame);

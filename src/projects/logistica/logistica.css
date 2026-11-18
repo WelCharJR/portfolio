@@ -95,3 +95,8 @@
 @media(max-width:760px){.logistica-project-page{padding:0}.logistica-project-page .logistica-demo-frame{border-radius:0}.logistica-project-page .log-app{min-height:100svh}.logistica-project-page .log-scene{min-height:clamp(390px,58svh,560px);height:clamp(390px,58svh,560px)}}
 
 .log-key-help{position:absolute;z-index:2;top:14px;right:14px;padding:7px 9px;border:1px solid #566669;border-radius:4px;background:#142022e8;color:#dce4df;font:10px ui-monospace,monospace;pointer-events:none}@media(max-width:760px){.log-key-help{display:none}}
+
+.log-actions .view-mode-on{background:#7ac7a2;color:#14231e;border:1px solid #a4e0bf}
+.log-view-only .log-key-help{display:none}
+.log-panel.view-only .inventory-manager,.log-panel.view-only .kanban-rename,.log-panel.view-only .kanban-rotation,.log-panel.view-only .log-width,.log-panel.view-only .log-delete{display:none}
+.kanban-slot-editor input:disabled{opacity:.75;color:#cbd3cd;cursor:default}

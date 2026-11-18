@@ -24,6 +24,8 @@ export default function Logistica() {
   const clearPreviewRef = useRef(() => {});
   const toolRef = useRef("select");
   const draftRef = useRef([]);
+  const [viewOnly, setViewOnly] = useState(false);
+  const viewOnlyRef = useRef(false);
   const [showStructure, setShowStructure] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const layerRefs = useRef({});
@@ -56,6 +58,7 @@ export default function Logistica() {
       zoomRef,
       focusRef,
       viewRef,
+      viewOnlyRef,
     },
     setters: {
       setLayout,
@@ -69,6 +72,7 @@ export default function Logistica() {
   });
 
   const addKanban = () => {
+    if (viewOnly) return;
     const enteredName = window.prompt("Nome do kanban (deixe vazio para usar o nome genérico):", "");
     if (enteredName === null) return;
     const name = enteredName.trim() || "Novo kanban";
@@ -80,7 +84,9 @@ export default function Logistica() {
     setSelected(id);
     setNotice("Kanban adicionado. Arraste-o para o local desejado.");
   };
-  const rotateKanban = (id, delta) => setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, rotation: ((k.rotation || 0) + delta + 360) % 360 } : k) }));
+  const rotateKanban = (id, delta) => {
+    if (viewOnly) return;
+    setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, rotation: ((k.rotation || 0) + delta + 360) % 360 } : k) }));
   const exportBackup = () => {
     const backup = { format: "hangar-logistica", version: 1, exportedAt: new Date().toISOString(), layout };
     const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" }));
@@ -92,6 +98,7 @@ export default function Logistica() {
     setNotice("Backup do hangar exportado.");
   };
   const importBackup = async (file) => {
+    if (viewOnly) return;
     try {
       const backup = JSON.parse(await file.text());
       const data = backup?.format === "hangar-logistica" && backup?.version === 1 ? backup.layout : null;
@@ -113,9 +120,10 @@ export default function Logistica() {
     setInspectedKanban(id);
     setSelectedSlotId(slotId || k.slots?.find((s) => s.code)?.id || k.slots?.[0]?.id || null);
     setFocusedSlotId(slotId);
-    focusRef.current(k.x, k.z, 9);
+    focusRef.current(k.x, k.z, 9, (k.rotation || 0) * Math.PI / 180);
   };
   const updateSlot = (field, value) => {
+    if (viewOnly) return;
     setLayout((p) => ({
       ...p,
       kanbans: p.kanbans.map((k) =>
@@ -139,14 +147,18 @@ export default function Logistica() {
     }));
   };
   const addItem = (item) => {
+    if (viewOnly) return;
     const kanban = layout.kanbans.find((k) => k.id === item.kanbanId);
     const slot = kanban?.slots.find((s) => item.slotId ? s.id === item.slotId && !s.code : !s.code);
     if (!slot) { setNotice("Kanban sem caixas livres."); return; }
     setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id !== kanban.id ? k : { ...k, slots: k.slots.map((s) => s.id !== slot.id ? s : { ...s, code: item.code, name: item.name, qty: item.qty, unit: item.unit }) }) }));
     setNotice(item.code + " adicionado em " + kanban.id + " · " + slot.id);
   };
-  const renameKanban = (id, name) => setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, name } : k) }));
+  const renameKanban = (id, name) => {
+    if (viewOnly) return;
+    setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, name } : k) }));
   const removeItem = (kanbanId, slotId) => {
+    if (viewOnly) return;
     setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id !== kanbanId ? k : { ...k, slots: k.slots.map((s) => s.id !== slotId ? s : { ...s, code: "", name: "", qty: 0, unit: "un" }) }) }));
   };
   const inspected = layout.kanbans.find((k) => k.id === inspectedKanban);
@@ -170,6 +182,7 @@ export default function Logistica() {
     clearPreviewRef.current();
   };
   const finishDrawing = () => {
+    if (viewOnly) return;
     const points = draftRef.current;
     if (toolRef.current === "area" && points.length >= 3) {
       const id = "A-" + String(Date.now()).slice(-4);
@@ -218,6 +231,7 @@ export default function Logistica() {
     setTool("select");
   };
   const removeSelected = () => {
+    if (viewOnly) return;
     setLayout((p) => ({
       ...p,
       areas: p.areas.filter((x) => x.id !== selected),
@@ -228,15 +242,32 @@ export default function Logistica() {
   const closeKanban = () => {
     setInspectedKanban(null);
     setFocusedSlotId(null);
-    focusRef.current(0, 0, 68);
+    focusRef.current(0, 0, 68, 0.63);
   };
-  const setPathWidth = (id, width) =>
+  const setPathWidth = (id, width) => {
+    if (viewOnly) return;
     setLayout((p) => ({ ...p, paths: p.paths.map((x) => (x.id === id ? { ...x, width } : x)) }));
+  };
+
+  const toggleViewOnly = () => {
+    const next = !viewOnly;
+    viewOnlyRef.current = next;
+    setViewOnly(next);
+    if (next) {
+      toolRef.current = "select";
+      setTool("select");
+      draftRef.current = [];
+      setDraft([]);
+      setCursorWorld(null);
+      setCursorScreen(null);
+      clearPreviewRef.current();
+    }
+  };
 
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.target instanceof HTMLElement && (event.target.isContentEditable || /INPUT|TEXTAREA|SELECT|BUTTON/.test(event.target.tagName))) return;
-      if (tool !== "select" || !selected || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (viewOnly || tool !== "select" || !selected || event.altKey || event.ctrlKey || event.metaKey) return;
       const kanban = layout.kanbans.find((item) => item.id === selected);
       if (!kanban) return;
       const key = event.key.toLowerCase();
@@ -266,7 +297,7 @@ export default function Logistica() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [layout.kanbans, rotateKanban, selected, setNotice, tool]);
+  }, [layout.kanbans, rotateKanban, selected, setNotice, tool, viewOnly]);
 
   useEffect(() => {
     if (focusedSlotId)
@@ -283,8 +314,10 @@ export default function Logistica() {
     setter(!value);
   };
   return (
-    <div className="log-app">
+    <div className={viewOnly ? "log-app log-view-only" : "log-app"}>
       <TopBar
+        viewOnly={viewOnly}
+        onToggleViewOnly={toggleViewOnly}
         showGrid={showGrid}
         showStructure={showStructure}
         onZoom={(amount) => zoomRef.current(amount)}
@@ -295,6 +328,7 @@ export default function Logistica() {
       <div className="log-body">
         <ScenePanel
           canvasRef={canvas}
+          viewOnly={viewOnly}
           tool={tool}
           pathType={pathType}
           snapToGrid={snapToGrid}
@@ -310,6 +344,7 @@ export default function Logistica() {
         />
         <SidePanel
           layout={layout}
+          viewOnly={viewOnly}
           selected={selected}
           query={query}
           selectedSlotId={selectedSlotId}
@@ -330,6 +365,7 @@ export default function Logistica() {
       {inspected && (
         <KanbanModal
           inspected={inspected}
+          viewOnly={viewOnly}
           selectedSlotId={selectedSlotId}
           focusedSlotId={focusedSlotId}
           onClose={closeKanban}

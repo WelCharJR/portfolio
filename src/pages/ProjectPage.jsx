@@ -18,6 +18,7 @@ export default function ProjectPage() {
   const { slug } = useParams();
   const project = getProject(slug);
   const Demo = registry[slug];
+  const isLogistica = slug === "logistica";
 
   if (!project || !Demo) {
     return (
@@ -29,15 +30,16 @@ export default function ProjectPage() {
   }
 
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto", padding: "40px 20px 20px" }}>
+    <div className={isLogistica ? "logistica-project-page" : undefined} style={isLogistica ? undefined : { maxWidth: 980, margin: "0 auto", padding: "40px 20px 20px" }}>
       <Link
         to="/"
         className="site-link focus-ring"
-        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-dim)", marginBottom: 24 }}
+        style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--ink-dim)", marginBottom: isLogistica ? 8 : 24 }}
       >
         <ArrowLeft size={14} /> todos os projetos
       </Link>
 
+      {!isLogistica && <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
         <h1 className="display" style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>{project.title}</h1>
         <span className="mono" style={{ fontSize: 12, color: "var(--ink-faint)" }}>{project.year}</span>
@@ -53,19 +55,23 @@ export default function ProjectPage() {
         ))}
       </div>
 
-      <div className="demo-frame" style={{ marginBottom: 34 }}>
+      </>}
+
+      <div className={isLogistica ? "demo-frame logistica-demo-frame" : "demo-frame"} style={{ marginBottom: isLogistica ? 0 : 34 }}>
+        {!isLogistica && <>
         <div className="demo-frame-bar">
           <span className="demo-frame-dot" />
           <span className="demo-frame-dot" />
           <span className="demo-frame-dot" />
           <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", marginLeft: 6 }}>demo ao vivo</span>
         </div>
+        </>}
         <Suspense fallback={<div style={{ padding: 60, textAlign: "center", color: "#7d8489" }}>carregando demo...</div>}>
           <Demo />
         </Suspense>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30, marginBottom: 20 }}>
+      {!isLogistica && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30, marginBottom: 20 }}>
         <div>
           <div className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
             Destaques técnicos
@@ -86,7 +92,7 @@ export default function ProjectPage() {
             ))}
           </div>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

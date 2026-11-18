@@ -1,6 +1,7 @@
 // Área da cena 3D: ferramentas de desenho, coordenadas, canvas, mira e barra de status.
 export default function ScenePanel({
   canvasRef,
+  viewOnly,
   tool,
   pathType,
   snapToGrid,
@@ -23,6 +24,7 @@ export default function ScenePanel({
         >
           Selecionar
         </button>
+        {!viewOnly && <>
         <button className={tool === "area" ? "active" : ""} onClick={() => onChooseTool("area")}>
           ＋ Área
         </button>
@@ -43,7 +45,8 @@ export default function ScenePanel({
         <button className={snapToGrid ? "active" : ""} onClick={onToggleSnap}>
           Malha {snapToGrid ? "1 m ligada" : "desligada"}
         </button>
-        {tool !== "select" && (
+        </>}
+        {!viewOnly && tool !== "select" && (
           <>
             <span>{draft.length} pontos</span>
             <button onClick={onFinish} disabled={draft.length < (tool === "area" ? 3 : 2)}>
@@ -67,10 +70,11 @@ export default function ScenePanel({
         ))}
       </div>
       <div className="log-hint">
-        {tool === "area"
-          ? "CLIQUE ESQUERDO NO PISO PARA DESENHAR A ÁREA"
-          : "CLIQUE ESQUERDO NO PISO PARA DESENHAR O CAMINHO"}{" "}
-        · ARRASTE KANBANS COM O CLIQUE ESQUERDO
+        {viewOnly
+          ? "MODO VISUALIZAÇÃO · CLIQUE PARA SELECIONAR · DOIS CLIQUES PARA ENQUADRAR"
+          : (tool === "area"
+            ? "CLIQUE ESQUERDO NO PISO PARA DESENHAR A ÁREA"
+            : "CLIQUE ESQUERDO NO PISO PARA DESENHAR O CAMINHO") + " · ARRASTE KANBANS COM O CLIQUE ESQUERDO"
       </div>
       <div className="log-canvas" ref={canvasRef} />
       {tool !== "select" && cursorScreen && (

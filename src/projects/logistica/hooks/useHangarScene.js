@@ -17,7 +17,7 @@ export function useHangarScene({
   refs,
   setters,
 }) {
-  const { toolRef, draftRef, pathTypeRef, snapRef, layerRefs, clearPreviewRef, zoomRef, focusRef, viewRef } =
+  const { toolRef, draftRef, pathTypeRef, snapRef, layerRefs, clearPreviewRef, zoomRef, focusRef, viewRef, viewOnlyRef } =
     refs;
   const {
     setLayout,
@@ -49,9 +49,9 @@ export function useHangarScene({
     renderer.shadowMap.type = THREE.PCFShadowMap;
     host.appendChild(renderer.domElement);
 
-    scene.add(new THREE.HemisphereLight(0xdaf4ff, 0x273334, 2.2));
-    const sun = new THREE.DirectionalLight(0xfff1d0, 3.5);
-    sun.position.set(-8, 18, 8);
+    scene.add(new THREE.HemisphereLight(0xddeeff, 0x45433b, 1.65));
+    const sun = new THREE.DirectionalLight(0xfff4dd, 2.45);
+    sun.position.set(-16, 20, 12);
     sun.castShadow = true;
     scene.add(sun);
 
@@ -189,9 +189,9 @@ export function useHangarScene({
     zoomRef.current = (amount) => {
       controls.radiusGoal = Math.max(9, Math.min(100, controls.radiusGoal + amount));
     };
-    focusRef.current = (x, z, radius = 10) => {
+    focusRef.current = (x, z, radius = 10, angle = 0.63) => {
       controls.targetGoal.set(x, 0, z);
-      controls.angleGoal = 0;
+      controls.angleGoal = angle;
       controls.radiusGoal = radius;
     };
     const onDown = (e) => {
@@ -213,7 +213,7 @@ export function useHangarScene({
       const screen = updatePointer(e);
       setCursorScreen(screen);
       raycaster.setFromCamera(pointer, camera);
-      if (toolRef.current === "area" || toolRef.current === "path") {
+      if (!viewOnlyRef.current && (toolRef.current === "area" || toolRef.current === "path")) {
         if (raycaster.ray.intersectPlane(plane, hit)) {
           const point = snapPoint(hit.x, hit.z);
           const next = [...draftRef.current, point];
@@ -234,7 +234,7 @@ export function useHangarScene({
           if (o.userData.slotId) slotOwner = o;
           o = o.parent;
         }
-        controls.dragging = o.userData.kind ? null : o.userData.id;
+        controls.dragging = viewOnlyRef.current || o.userData.kind ? null : o.userData.id;
         setSelected(o.userData.id);
         if (slotOwner) {
           setSelectedSlotId(slotOwner.userData.slotId);
@@ -327,7 +327,7 @@ export function useHangarScene({
       const kanban = layoutRef.current.kanbans.find((item) => item.id === rack?.userData.id);
       if (!kanban) return;
       setSelected(kanban.id);
-      focusRef.current(kanban.x, kanban.z, 11);
+      focusRef.current(kanban.x, kanban.z, 11, THREE.MathUtils.degToRad(kanban.rotation || 0));
       setNotice(kanban.name + " · passe o cursor sobre uma caixa para ver o conteúdo");
     };
     renderer.domElement.addEventListener("dblclick", onDoubleClick);

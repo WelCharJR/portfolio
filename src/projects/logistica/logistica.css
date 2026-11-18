@@ -93,3 +93,5 @@
 .logistica-project-page .log-body{min-height:calc(100svh - 214px);grid-template-columns:minmax(0,1fr) minmax(280px,320px)}
 .logistica-project-page .log-scene{min-height:calc(100svh - 214px)}
 @media(max-width:760px){.logistica-project-page{padding:0}.logistica-project-page .logistica-demo-frame{border-radius:0}.logistica-project-page .log-app{min-height:100svh}.logistica-project-page .log-scene{min-height:clamp(390px,58svh,560px);height:clamp(390px,58svh,560px)}}
+
+.log-key-help{position:absolute;z-index:2;top:14px;right:14px;padding:7px 9px;border:1px solid #566669;border-radius:4px;background:#142022e8;color:#dce4df;font:10px ui-monospace,monospace;pointer-events:none}@media(max-width:760px){.log-key-help{display:none}}

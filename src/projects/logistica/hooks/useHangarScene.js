@@ -17,7 +17,7 @@ export function useHangarScene({
   refs,
   setters,
 }) {
-  const { toolRef, draftRef, pathTypeRef, snapRef, layerRefs, clearPreviewRef, zoomRef, focusRef } =
+  const { toolRef, draftRef, pathTypeRef, snapRef, layerRefs, clearPreviewRef, zoomRef, focusRef, viewRef } =
     refs;
   const {
     setLayout,
@@ -97,12 +97,12 @@ export function useHangarScene({
       down: false,
       lastX: 0,
       lastY: 0,
-      angle: 0.63,
-      angleGoal: 0.63,
-      radius: 68,
-      radiusGoal: 68,
-      target: new THREE.Vector3(0, 0, 0),
-      targetGoal: new THREE.Vector3(0, 0, 0),
+      angle: viewRef.current?.angle ?? 0.63,
+      angleGoal: viewRef.current?.angle ?? 0.63,
+      radius: viewRef.current?.radius ?? 68,
+      radiusGoal: viewRef.current?.radius ?? 68,
+      target: new THREE.Vector3(viewRef.current?.x ?? 0, 0, viewRef.current?.z ?? 0),
+      targetGoal: new THREE.Vector3(viewRef.current?.x ?? 0, 0, viewRef.current?.z ?? 0),
       dragging: null,
     };
     const raycaster = new THREE.Raycaster(),
@@ -362,6 +362,7 @@ export function useHangarScene({
     };
     window.addEventListener("resize", resize);
     return () => {
+      viewRef.current = { angle: controls.angle, radius: controls.radius, x: controls.target.x, z: controls.target.z };
       renderer.setAnimationLoop(null);
       renderer.domElement.removeEventListener("dblclick", onDoubleClick);
       renderer.domElement.removeEventListener("pointercancel", onUp);

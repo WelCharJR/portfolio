@@ -158,6 +158,7 @@ export default function Logistica() {
   const renameKanban = (id, name) => {
     if (viewOnly) return;
     setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id === id ? { ...k, name } : k) }));
+  };
   const removeItem = (kanbanId, slotId) => {
     if (viewOnly) return;
     setLayout((p) => ({ ...p, kanbans: p.kanbans.map((k) => k.id !== kanbanId ? k : { ...k, slots: k.slots.map((s) => s.id !== slotId ? s : { ...s, code: "", name: "", qty: 0, unit: "un" }) }) }));

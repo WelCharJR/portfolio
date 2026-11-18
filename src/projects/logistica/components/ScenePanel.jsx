@@ -67,9 +67,9 @@ export default function ScenePanel({
       </div>
       <div className="log-hint">
         {tool === "area"
-          ? "CLIQUE NO PISO PARA DESENHAR A ÁREA"
-          : "CLIQUE NO PISO PARA DESENHAR O CAMINHO"}{" "}
-        · ARRASTE KANBANS
+          ? "CLIQUE ESQUERDO NO PISO PARA DESENHAR A ÁREA"
+          : "CLIQUE ESQUERDO NO PISO PARA DESENHAR O CAMINHO"}{" "}
+        · ARRASTE KANBANS COM O CLIQUE ESQUERDO
       </div>
       <div className="log-canvas" ref={canvasRef} />
       {tool !== "select" && cursorScreen && (
